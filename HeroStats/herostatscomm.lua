@@ -23,7 +23,6 @@ local HEROSTATS_VIEW_DISPLAY_NAMES = {
     ["PERSONAL_HEAL_RECORDS"] = "Personal Healing Records"
 }
 
-
 -- FIXED v1.0.0b1: Async chat queue engine handles all secure server channels via C_Timer to bypass Blizzard action blockades
 function HeroStats_SendQueuedMessages(msgList, channel, isCustom, customNum)
     if not msgList or #msgList == 0 then return end
@@ -583,7 +582,7 @@ function HeroStats_Report_Resurrects(playerData, channel, isCustom, customNum)
     end
 end
 
--- FIXED v1.0.0b1: Global asynchronous reporter function for Personal Damage Records museum (Page 13)
+-- FIXED v1.0.0b2: Global asynchronous reporter function for Personal Damage Records museum (Page 13)
 function HeroStats_Report_PersonalDamage(recordData, channel, isCustom, customNum)
     if not recordData then return end
     
@@ -594,18 +593,36 @@ function HeroStats_Report_PersonalDamage(recordData, channel, isCustom, customNu
     end
     
     local msgQueue = {}
-    local formattedAmt = FormatDotNumber and FormatDotNumber(recordData.amount) or recordData.amount
-    local critStr = recordData.isCrit and "Critical Strike" or "Normal Hit"
+
+    -- FIXED v1.0.0b2: Robust Sub-Table Fallback Router extracts valid historic values dynamically
+    local maxNormal = (recordData.normal and type(recordData.normal) == "table") and (recordData.normal.amount or 0) or 0
+    local maxCrit = (recordData.crit and type(recordData.crit) == "table") and (recordData.crit.amount or 0) or 0
+    local trueRecordAmount = recordData.amount or math.max(maxNormal, maxCrit)
+    
+    -- Determine current record context safely based on master amount ceilings
+    local finalIsCrit = recordData.isCrit or (maxCrit >= maxNormal and maxCrit > 0)
+    local critStr = finalIsCrit and "Critical Strike" or "Normal Hit"
+    
+    -- Dynamically map target, date, and activity labels under a secure nil-shield
+    local recordTarget = recordData.target or (finalIsCrit and recordData.crit and recordData.crit.target) or (recordData.normal and recordData.normal.target) or "Unknown"
+    local recordDate = recordData.date or (finalIsCrit and recordData.crit and recordData.crit.date) or (recordData.normal and recordData.normal.date) or "Unknown"
+    
+    -- Detect if this is an isolated periodic DoT block to resolve the correct metric label
+    local isPeriodicSpell = string.find(recordData.name or "", "%([HD]oT%)")
+    local counterLabel = isPeriodicSpell and "Total Ticks" or "Total Casts"
+    local finalCounterVal = isPeriodicSpell and (recordData.ticks or 0) or (recordData.casts or 0)
+
+    local formattedAmt = FormatDotNumber and FormatDotNumber(trueRecordAmount) or trueRecordAmount
     
     -- Compile a beautiful, high-value milestone header layout
-    local headerMsg = string.format("HeroStats - Damage Record for %s: %s!", recordData.name or "Unknown", formattedAmt)
+    local headerMsg = string.format("HeroStats - Damage Record for %s: %s!", recordData.name or "Unknown", tostring(formattedAmt))
     table.insert(msgQueue, headerMsg)
     
     -- Compile detailed statistical layout bullet points containing targets and isolated career casts
-    local line1 = string.format("- Max Value: %s (%s)", formattedAmt, critStr)
-    local line2 = string.format("- Target: %s", recordData.target or "Unknown")
-    local line3 = string.format("- Date: %s", recordData.date or "Unknown")
-    local line4 = string.format("- Total Casts: %d", recordData.casts or 0)
+    local line1 = string.format("- Max Value: %s (%s)", tostring(formattedAmt), critStr)
+    local line2 = string.format("- Target: %s", tostring(recordTarget))
+    local line3 = string.format("- Date: %s", tostring(recordDate))
+    local line4 = string.format("- %s: %d", counterLabel, finalCounterVal)
     
     table.insert(msgQueue, line1)
     table.insert(msgQueue, line2)
@@ -624,7 +641,7 @@ function HeroStats_Report_PersonalDamage(recordData, channel, isCustom, customNu
     end
 end
 
--- FIXED v1.0.0b1: Global asynchronous reporter function for Personal Healing Records museum (Page 14)
+-- FIXED v1.0.0b2: Global asynchronous reporter function for Personal Healing Records (Page 14)
 function HeroStats_Report_PersonalHealing(recordData, channel, isCustom, customNum)
     if not recordData then return end
     
@@ -635,18 +652,36 @@ function HeroStats_Report_PersonalHealing(recordData, channel, isCustom, customN
     end
     
     local msgQueue = {}
-    local formattedAmt = FormatDotNumber and FormatDotNumber(recordData.amount) or recordData.amount
-    local critStr = recordData.isCrit and "Critical Heal" or "Normal Heal"
+
+    -- FIXED v1.0.0b2: Robust Sub-Table Fallback Router extracts valid historic values dynamically
+    local maxNormal = (recordData.normal and type(recordData.normal) == "table") and (recordData.normal.amount or 0) or 0
+    local maxCrit = (recordData.crit and type(recordData.crit) == "table") and (recordData.crit.amount or 0) or 0
+    local trueRecordAmount = recordData.amount or math.max(maxNormal, maxCrit)
+    
+    -- Determine current record context safely based on master amount ceilings
+    local finalIsCrit = recordData.isCrit or (maxCrit >= maxNormal and maxCrit > 0)
+    local critStr = finalIsCrit and "Critical Heal" or "Normal Heal"
+    
+    -- Dynamically map target, date, and activity labels under a secure nil-shield
+    local recordTarget = recordData.target or (finalIsCrit and recordData.crit and recordData.crit.target) or (recordData.normal and recordData.normal.target) or "Unknown"
+    local recordDate = recordData.date or (finalIsCrit and recordData.crit and recordData.crit.date) or (recordData.normal and recordData.normal.date) or "Unknown"
+    
+    -- Detect if this is an isolated periodic HoT block to resolve the correct metric label
+    local isPeriodicSpell = string.find(recordData.name or "", "%([HD]oT%)")
+    local counterLabel = isPeriodicSpell and "Total Ticks" or "Total Casts"
+    local finalCounterVal = isPeriodicSpell and (recordData.ticks or 0) or (recordData.casts or 0)
+
+    local formattedAmt = FormatDotNumber and FormatDotNumber(trueRecordAmount) or trueRecordAmount
     
     -- Compile a beautiful, high-value milestone header layout
-    local headerMsg = string.format("HeroStats - Healing Record for %s: %s!", recordData.name or "Unknown", formattedAmt)
+    local headerMsg = string.format("HeroStats - Healing Record for %s: %s!", recordData.name or "Unknown", tostring(formattedAmt))
     table.insert(msgQueue, headerMsg)
     
     -- Compile detailed statistical layout bullet points containing targets and isolated career casts
-    local line1 = string.format("- Max Value: %s (%s)", formattedAmt, critStr)
-    local line2 = string.format("- Target: %s", recordData.target or "Unknown")
-    local line3 = string.format("- Date: %s", recordData.date or "Unknown")
-    local line4 = string.format("- Total Casts: %d", recordData.casts or 0)
+    local line1 = string.format("- Max Value: %s (%s)", tostring(formattedAmt), critStr)
+    local line2 = string.format("- Target: %s", tostring(recordTarget))
+    local line3 = string.format("- Date: %s", tostring(recordDate))
+    local line4 = string.format("- %s: %d", counterLabel, finalCounterVal)
     
     table.insert(msgQueue, line1)
     table.insert(msgQueue, line2)
@@ -664,7 +699,6 @@ function HeroStats_Report_PersonalHealing(recordData, channel, isCustom, customN
         end
     end
 end
-
 
 -- FIXED v1.0.0b1: Universal Asynchronous Page Overview Reporter (Main Header Bar Engine)
 function HeroStats_Report_ActivePageOverview(masterSession, viewType, fightSeconds, targetChannel)

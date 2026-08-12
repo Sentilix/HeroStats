@@ -8,7 +8,9 @@ sessionFrame:SetClampedToScreen(true)
 sessionFrame:Hide() 
 
 sessionFrame:SetFrameStrata("DIALOG")
-sessionFrame:SetFrameLevel(100) 
+sessionFrame:SetFrameLevel(100)
+-- FIXED v1.0.0b2: Registers your session list frame globally into Blizzard's Escape-key window table
+tinsert(UISpecialFrames, "HeroStatsSessionFrame")
 
 local sfBg = sessionFrame:CreateTexture(nil, "BACKGROUND")
 sfBg:SetAllPoints(sessionFrame)

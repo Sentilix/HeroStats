@@ -1,3 +1,13 @@
+# Changelog - HeroStats v1.0.0b2
+
+## [Changed]
+* Changed Report default channel to be window warnings.
+
+## [Fixed]
+* Fixed some non-damage/healing spells appearing on meters; e.g. Conjure Water for a mage!
+* Fixed hardcoded (wrong) version number being returned in /hs config - doh!
+* Fixed Hunters being recorded on Death meters when feigning death!
+
 # Changelog - HeroStats v1.0.0b1
 
 ## [Added]
@@ -15,7 +25,7 @@
 - Added: "Officer Chat" integration added into the interface configuration options page, replaces "Yell".
 
 ## [Changed]
-- Changed: Complete overhaul of the reporting engine – each tab now utilizes a dedicated, sandboxed function to eliminate cross-page data pollution.
+- Changed: Complete overhaul of the reporting engine ï¿½ each tab now utilizes a dedicated, sandboxed function to eliminate cross-page data pollution.
 - Changed: Upgraded all primary layout bars to Button frames to fully support modern patch-safe mouse clicks.
 
 ## [Fixed]
@@ -27,17 +37,17 @@
 # Changelog - HeroStats v0.10.0
 
 ## [Added]
-- Added: New "Damage Crits" tab – check your offensive crit percentages.
-- Added: New "Healing Crits" tab – check your defensive green crits.
+- Added: New "Damage Crits" tab ï¿½ check your offensive crit percentages.
+- Added: New "Healing Crits" tab ï¿½ check your defensive green crits.
 - Added: Next-gen Tri-State filter button (None -> Healers -> Your Class) with instant bar updates.
 - Added: The DoT-portion of a spell is now considered a separate damage entry.
 
 ## [Changed]
 - Changed: Header text and icons refactored (Arcanite Ore for all classes, Holy Aura for healers).
-- Changed: Fully opened meters for all classes – Mage and Warrior healing now tracks perfectly.
+- Changed: Fully opened meters for all classes ï¿½ Mage and Warrior healing now tracks perfectly.
 - Changed: Resurrection page upgraded to display the actual names of players brought back to life.
 - Changed: Death page unlocked to capture fatalities for every single raid group member.
-- Changed: Session selector cleaned up – the newest fight is now tagged as "Current session".
+- Changed: Session selector cleaned up ï¿½ the newest fight is now tagged as "Current session".
 
 ## [Fixed]
 - Fixed: Added hard safety shields to completely block non-mana users from polluting the Mana Gained tab.
@@ -46,7 +56,7 @@
 # Changelog - HeroStats v0.9.0
 
 ## [Added]
-- Added: Numbers in front of names (1. Arne, 2. Børge) on all bars.
+- Added: Numbers in front of names (1. Arne, 2. Bï¿½rge) on all bars.
 - Added: Class colors on the player names inside tooltips.
 - Added: Server names are now always glued onto the player names.
 - Added: Extended tooltips to show a full Top 10 list instead of 8.

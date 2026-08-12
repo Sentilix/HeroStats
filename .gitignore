@@ -6,3 +6,7 @@ HeroStats/HeroStats.wowsln
 *.wowsln
 
 *.user
+
+*.cmd
+
+HeroStats/.vscode/

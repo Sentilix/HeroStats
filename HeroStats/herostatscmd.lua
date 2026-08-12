@@ -9,16 +9,17 @@ function HeroStats_Print(msg)
     end
 end
 
--- Netplay Version Checker: Registers hidden addon channel to query group version levels
 local commFrame = CreateFrame("Frame")
 commFrame:RegisterEvent("CHAT_MSG_ADDON")
 commFrame:SetScript("OnEvent", function(self, event, prefix, text, channel, sender)
     if event == "CHAT_MSG_ADDON" and prefix == "HeroStatsComm" then
         local command, value = string.match(text, "([^:]+):([^:]+)")
         if command == "QUERY_VERSION" then
-            -- Respond silently back to the sender with our installed version token
-            local _, cleanSender = string.match(sender, "([^-]+)")
-            C_ChatInfo.SendAddonMessage("HeroStatsComm", "RESP_VERSION:0.6.0", "WHISPER", sender)
+            -- FIXED v1.0.0b2: Dynamic TOC Version Fetcher eliminates hardcoded version leaks completely
+            local currentVer = C_AddOns and C_AddOns.GetAddOnMetadata("HeroStats", "Version") or GetAddOnMetadata("HeroStats", "Version") or "1.0.0b2"
+            
+            -- Respond silently back to the sender with our dynamically fetched version token
+            C_ChatInfo.SendAddonMessage("HeroStatsComm", "RESP_VERSION:" .. currentVer, "WHISPER", sender)
         elseif command == "RESP_VERSION" and value then
             local cleanSender = string.match(sender, "([^-]+)") or sender
             HeroStats_Print(cleanSender .. " is running version " .. value)

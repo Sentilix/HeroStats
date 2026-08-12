@@ -1,5 +1,5 @@
 ## Title: HeroStats - combat log statistics
-## Version: 1.0.0b1
+## Version: 1.0.0b2
 ## Author: mimma @ EU-pyrewood village
 ## Interface: 11509
 ## IconTexture: Interface\Icons\Achievement_BG_TopHealer_AV

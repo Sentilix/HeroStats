@@ -5,12 +5,11 @@
 local configPanel = CreateFrame("Frame", "HeroStatsConfigPanel", UIParent)
 configPanel.name = "HeroStats"
 
--- Fetch the version string directly from the .toc metadata sheet
-local addonVersion = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("HeroStats", "Version") or "1.0.0b1"
+local addonVersion = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("HeroStats", "Version") or "Unknown"
 
 -- Create Credits Header Text
 local creditsText = configPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-local addonAuthor = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("HeroStats", "Author") or "mimma"
+local addonAuthor = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("HeroStats", "Author") or "mimma @ EU-Pyrewood Village"
 creditsText:SetPoint("TOPLEFT", 16, -6)
 creditsText:SetText("HeroStats v" .. addonVersion .. " - by " .. addonAuthor)
 creditsText:SetTextColor(0.75, 0.75, 0.75, 1.0)
@@ -42,7 +41,7 @@ local function CreateRadioButton(name, text, yOffset)
     local cbText = _G[cb:GetName() .. "Text"]
     if cbText then 
         cbText:SetText(text) 
-        cbText:SetTextColor(1.0, 1.0, 1.0, 1.0) -- Solid white text labels
+        cbText:SetTextColor(1.0, 1.0, 1.0, 1.0)
     end
     return cb
 end
@@ -61,7 +60,7 @@ slider:SetObeyStepOnDrag(true)
 local sliderLabel = slider:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 sliderLabel:SetPoint("BOTTOMLEFT", slider, "TOPLEFT", 0, 4)
 sliderLabel:SetText("Max Saved Sessions:")
-sliderLabel:SetTextColor(1.0, 0.82, 0.0, 1.0) -- Symmetrical Gold Header
+sliderLabel:SetTextColor(1.0, 0.82, 0.0, 1.0)
 
 local lowText = _G[slider:GetName() .. "Low"]
 if lowText then lowText:SetText("5") end
@@ -104,9 +103,9 @@ end)
 
 -- Create Section Label Layout anchored cleanly under Row 1's radio buttons
 local notifyLabel = configPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-notifyLabel:SetPoint("TOPLEFT", groupLabel, "BOTTOMLEFT", 0, -95) -- FIXED v1.0.0b1: Anchored flawlessly to fill the empty Row 2 space
+notifyLabel:SetPoint("TOPLEFT", groupLabel, "BOTTOMLEFT", 0, -95)
 notifyLabel:SetText("Personal Record Alerts & Pings:")
-notifyLabel:SetTextColor(1.0, 0.82, 0.0, 1.0) -- Symmetrical Gold Header Layout
+notifyLabel:SetTextColor(1.0, 0.82, 0.0, 1.0)
 
 -- 1. RADIO BUTTON: MUTE ALL (Mode 1)
 local cbRecNone = CreateFrame("CheckButton", "HeroStats_RadioRecNone", configPanel, "InterfaceOptionsCheckButtonTemplate")
@@ -114,7 +113,7 @@ cbRecNone:SetPoint("TOPLEFT", notifyLabel, "BOTTOMLEFT", 0, -10)
 local textNone = _G[cbRecNone:GetName() .. "Text"]
 if textNone then
     textNone:SetText("Mute All Alerts (Silent Mode)")
-    textNone:SetTextColor(1.0, 1.0, 1.0, 1.0) -- Crisp White choice label text
+    textNone:SetTextColor(1.0, 1.0, 1.0, 1.0)
 end
 
 -- 2. RADIO BUTTON: LOCAL CHAT ALERTS (Mode 2)
@@ -123,7 +122,7 @@ cbRecLocal:SetPoint("TOPLEFT", cbRecNone, "BOTTOMLEFT", 0, -8)
 local textLocal = _G[cbRecLocal:GetName() .. "Text"]
 if textLocal then
     textLocal:SetText("Local chat only")
-    textLocal:SetTextColor(1.0, 1.0, 1.0, 1.0) -- Crisp White choice label text
+    textLocal:SetTextColor(1.0, 1.0, 1.0, 1.0)
 end
 
 -- 3. RADIO BUTTON: SCREEN WARNING ALERTS (Mode 3)
@@ -132,7 +131,7 @@ cbRecScreen:SetPoint("TOPLEFT", cbRecLocal, "BOTTOMLEFT", 0, -8)
 local textScreen = _G[cbRecScreen:GetName() .. "Text"]
 if textScreen then
     textScreen:SetText("Screen Warning Alert Display")
-    textScreen:SetTextColor(1.0, 1.0, 1.0, 1.0) -- Crisp White choice label text
+    textScreen:SetTextColor(1.0, 1.0, 1.0, 1.0)
 end
 
 -- 4. RADIO BUTTON: GROUP ANNOUNCE (Mode 4)
@@ -141,7 +140,7 @@ cbRecGroup:SetPoint("TOPLEFT", cbRecScreen, "BOTTOMLEFT", 0, -8)
 local textGroup = _G[cbRecGroup:GetName() .. "Text"]
 if textGroup then
     textGroup:SetText("Announce to Active Raid/Party Chat")
-    textGroup:SetTextColor(1.0, 1.0, 1.0, 1.0) -- Crisp White choice label text
+    textGroup:SetTextColor(1.0, 1.0, 1.0, 1.0)
 end
 
 
@@ -184,7 +183,7 @@ end)
 -- ON-SHOW PIPELINE: Read database state dynamically when opening options panel
 local function HeroStats_RefreshRadioVisuals()
     if not HeroStatsSettings then return end
-    local currentMode = HeroStatsSettings.recordNotifyMode or 2
+    local currentMode = HeroStatsSettings.recordNotifyMode or 3
     HeroStats_UpdateNotificationRadioButtons(currentMode)
 end
 
@@ -210,11 +209,11 @@ end
 
 local btnResetRecords = CreateFrame("Button", "HeroStatsResetRecordsButton", configPanel, "UIPanelButtonTemplate")
 btnResetRecords:SetSize(160, 24)
-btnResetRecords:SetPoint("TOPLEFT", cbRecGroup, "BOTTOMLEFT", 0, -40) -- FIXED: Retains your beautiful fluid anchoring flow perfectly
+btnResetRecords:SetPoint("TOPLEFT", cbRecGroup, "BOTTOMLEFT", 0, -40)
 btnResetRecords:SetText("Reset Personal Records")
 
 StaticPopupDialogs["HEROSTATS_PURGE_RECORDS_CONFIRM"] = {
-    text = "WARNING: Are you sure you want to permanently delete ALL your historical personal records and Critline milestones?",
+    text = "WARNING: Are you sure you want to permanently reset ALL your historical personal Damage and Healing records?",
     button1 = "Yes, Purge My Records",
     button2 = "No, Cancel",
     OnAccept = function()
@@ -222,7 +221,7 @@ StaticPopupDialogs["HEROSTATS_PURGE_RECORDS_CONFIRM"] = {
             HeroStatsSettings.personalDamageRecords = {}
             HeroStatsSettings.personalHealingRecords = {}
             if HeroStats_Print then
-                HeroStats_Print("Your historical Personal Damage and Healing Records have been completely purged.")
+                HeroStats_Print("Your historical personal Damage and Healing records have been completely reset.")
             end
             if coreFrame and coreFrame.RefreshStats then 
                 coreFrame.RefreshStats() 

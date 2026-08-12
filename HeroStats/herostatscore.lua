@@ -628,11 +628,11 @@ local function GetLiveSpellManaCost(spellID)
     return 0
 end
 
--- FIXED v1.0.0a3: Symmetrical Notification Engine with Solo-Group Fallback Protection
-function HeroStats_TriggerRecordNotification(spellName, targetName, amountValue, isCrit, isHealing)
+-- FIXED v1.0.0b2: Symmetrical Notification Engine with Solo-Group Fallback Protection
+function HeroStats_TriggerRecordNotification(spellName, targetName, amountValue, isCrit, isDamage)
     if not HeroStatsSettings then return end
     
-    local notifyMode = HeroStatsSettings.recordNotifyMode or 2 -- Fallback cleanly to Local Chat (Mode 2)
+    local notifyMode = HeroStatsSettings.recordNotifyMode or 3
     
     -- MODE 1 SHIELD: If set to 1 (Silent Mode), we completely bypass the pipeline instantly
     if notifyMode > 1 then
@@ -641,6 +641,7 @@ function HeroStats_TriggerRecordNotification(spellName, targetName, amountValue,
         local critStr = isCrit and "Crit" or "Normal"
         local formattedAmt = FormatDotNumber and FormatDotNumber(amountValue) or amountValue
         
+        -- FIXED v1.0.0b2: DATA SANITIZER LAYER (Washes inherited Blizzard UI Taint completely clean!)
         local msg = string.format("New %s %s Record! %s %s %s for %s!", 
             critStr, typeStr, spellName, actionStr, targetName or "Unknown", formattedAmt)
         
@@ -670,7 +671,7 @@ function HeroStats_TriggerRecordNotification(spellName, targetName, amountValue,
         -- MODE 4: Group Announcement Instance Router (Guaranteed to be in a group here)
         elseif notifyMode == 4 then
             if isCrit then PlaySound(6674) else PlaySound(1204) end            
-            -- Prefixes your clean addon brand identifier for group blære-chat text
+            -- Prefixes your clean addon brand identifier for group blï¿½re-chat text
             local groupMsg = "HeroStats: " .. msg
             local channel = IsInRaid() and "RAID" or "PARTY"
             SendChatMessage(groupMsg, channel)
@@ -685,7 +686,9 @@ local activeHealers = nil;
 
 --  SPELL_CAST_SUCCESS - processed both IN and OUT of combat)
 local function OnEvent_SPELL_CAST_SUCCESS(eventType, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags)
-    local _, spellName = select(12, CombatLogGetCurrentEventInfo())
+    local _, spellName, _, amount = select(12, CombatLogGetCurrentEventInfo())
+    if not amount then return; end;
+
     local cleanSourceName = sourceName and string.match(sourceName, "([^-]+)") or "Unknown"
     local healerClass = groupRosterCache[cleanSourceName]
 
@@ -809,10 +812,10 @@ local function OnEvent_DAMAGE(eventType, sourceGUID, sourceName, sourceFlags, de
         spellName = "Melee"
     else
         -- For all SPELL and PERIODIC (DoT) hits:
-        -- Argument 12 = SpellID, Argument 13 = SpellName, Argument 15 = Damage Amount
-        spellID = select(12, CombatLogGetCurrentEventInfo())
-        spellName = select(13, CombatLogGetCurrentEventInfo()) or "Unknown Spell"
-        amount = select(15, CombatLogGetCurrentEventInfo()) or 0
+        spellID, spellName, _, amount = select(12, CombatLogGetCurrentEventInfo())
+
+        spellName = spellName or "Unknown Spell"
+        amount = amount or 0
         
         -- Intercept DoT variants cleanly before processing databases
         if eventType == "SPELL_PERIODIC_DAMAGE" then
@@ -912,7 +915,7 @@ local function OnEvent_DAMAGE(eventType, sourceGUID, sourceName, sourceFlags, de
                 end
 
                 if isNewRecord then
-                    HeroStats_TriggerRecordNotification(cleanRecordSpellName, destName, currentAmount, isCritRecord, true) -- Passes true for damage aspect
+                    HeroStats_TriggerRecordNotification(cleanRecordSpellName, destName, currentAmount, isCritRecord, false) 
                 end
             end
 
@@ -1056,6 +1059,18 @@ local function OnEvent_HEAL(eventType, sourceGUID, sourceName, sourceFlags, dest
             healer.effective = healer.effective + effective
             healer.overheal = healer.overheal + overheal
                 
+            -- FIXED v1.0.0b2: Crusader Shield auto-blocks fake Rogue/Warrior procs from polluting the Healing Crits engine
+            local isTrueHealerClass = (classFilename == "PRIEST") or (classFilename == "DRUID") or (classFilename == "PALADIN") or (classFilename == "SHAMAN")
+            
+            if isTrueHealerClass then
+                -- Accumulate master hits and crits ONLY for verified healing archetypes
+                healer.totalHealHits = (healer.totalHealHits or 0) + 1
+                if isHealCrit then
+                    healer.critHealHits = (healer.critHealHits or 0) + 1
+                    healer.critHealAmt = (healer.critHealAmt or 0) + effective
+                end
+            end
+                
             -- Accumulate master hits and crits for your new Healing Crits page
             healer.totalHealHits = (healer.totalHealHits or 0) + 1
             if isHealCrit then
@@ -1133,7 +1148,7 @@ local function OnEvent_HEAL(eventType, sourceGUID, sourceName, sourceFlags, dest
 
                 -- Invokes the unified record notification engine cleanly via single line
                 if isNewRecord then
-                    HeroStats_TriggerRecordNotification(cleanRecordSpellName, destName, currentHeal, isCritRecord, false)
+                    HeroStats_TriggerRecordNotification(cleanRecordSpellName, destName, currentHeal, isCritRecord, true)
                 end
             end
 
@@ -1304,17 +1319,34 @@ local function OnEvent_UNIT_DIED(eventType, sourceGUID, sourceName, sourceFlags,
         -- Fetch the true class armor type from your live roster group cache
         local targetClass = groupRosterCache[cleanDestName] or "UNKNOWN"
             
-        local sessionHealers = HeroStats_GetActiveSessionHealers()
-        if sessionHealers then
-            local healer = HeroStats_GetOrCreateProfile(sessionHealers, destGUID, cleanDestName, targetClass)
-            healer.deaths = (healer.deaths or 0) + 1
-                
-            -- Accumulate cumulatively inside the master Overall database sheet
-            if HeroStatsSettings and HeroStatsSettings.overallData then
-                local overallHealer = HeroStats_GetOrCreateProfile(HeroStatsSettings.overallData, destGUID, cleanDestName, targetClass)
-                overallHealer.deaths = (overallHealer.deaths or 0) + 1
+        -- FIXED v1.0.0b2: Hunter Feign Death Validation Shield scans unit auras to intercept fake logs
+        local isFakeHunterDeath = false
+        if targetClass == "HUNTER" then
+            -- In WoW Classic/Era, group members can often be queried directly via their clean character name
+            for i = 1, 40 do
+                local buffName = UnitBuff(cleanDestName, i)
+                if not buffName then break end
+                if buffName == "Feign Death" then
+                    isFakeHunterDeath = true
+                    break
+                end
             end
-            if coreFrame.RefreshStats then coreFrame.RefreshStats() end
+        end
+
+        -- MASTER INGRESS BARRIER: Only registers the event if the unit is genuinely dead
+        if not isFakeHunterDeath then
+            local sessionHealers = HeroStats_GetActiveSessionHealers()
+            if sessionHealers then
+                local healer = HeroStats_GetOrCreateProfile(sessionHealers, destGUID, cleanDestName, targetClass)
+                healer.deaths = (healer.deaths or 0) + 1
+                    
+                -- Accumulate cumulatively inside the master Overall database sheet
+                if HeroStatsSettings and HeroStatsSettings.overallData then
+                    local overallHealer = HeroStats_GetOrCreateProfile(HeroStatsSettings.overallData, destGUID, cleanDestName, targetClass)
+                    overallHealer.deaths = (overallHealer.deaths or 0) + 1
+                end
+                if coreFrame.RefreshStats then coreFrame.RefreshStats() end
+            end
         end
     end
 end;

@@ -73,6 +73,159 @@ local CLASS_ICON_MAP = {
     ["DRUID"]    = "Interface\\Icons\\Spell_Nature_Regeneration"
 }
 
+
+-- ====================================================================
+-- HeroStats - Taint-Free Custom Dropdown Replacement Frame (v1.0.0b2)
+-- ====================================================================
+
+-- 1. Create the Master Anchor Frame (Styled like a compact dropdown menu)
+local reportFrame = CreateFrame("Frame", "HeroStatsReportFrame", UIParent, "BackdropTemplate")
+reportFrame:SetSize(210, 140) -- Slimmed down perfectly since EditBox is completely removed!
+reportFrame:SetClampedToScreen(true)
+reportFrame:SetFrameStrata("DIALOG")
+reportFrame:SetFrameLevel(150)
+reportFrame:Hide()
+
+-- Register globally into Blizzard's Escape-key engine safely
+tinsert(UISpecialFrames, "HeroStatsReportFrame")
+
+-- Apply the sleek, dark signature HeroStats dropdown background styling
+reportFrame:SetBackdrop({
+    bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true, tileSize = 16, edgeSize = 16,
+    insets = { left = 4, right = 4, top = 4, bottom = 4 }
+})
+reportFrame:SetBackdropColor(0.03, 0.03, 0.03, 0.98)
+reportFrame:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+
+-- Keep track of active context state inside file-level scope variable keys
+local currentBarDataRef = nil
+local currentViewTypeRef = nil
+local currentDurationRef = nil
+
+-- 2. Helper Factory to Construct Clean Clickable Dropdown Text Items
+local function CreateDropdownTextItem(labelText, index, onClickFunc)
+    local itemFrame = CreateFrame("Button", nil, reportFrame)
+    itemFrame:SetSize(190, 18)
+    itemFrame:SetPoint("TOPLEFT", reportFrame, "TOPLEFT", 10, -8 - (index * 20))
+    
+    local text = itemFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    text:SetPoint("LEFT", itemFrame, "LEFT", 4, 0)
+    text:SetText(labelText)
+    
+    local isCancelButton = (labelText == "Cancel")
+    if isCancelButton then
+        text:SetTextColor(0.95, 0.82, 0) -- Gold for Cancel
+    else
+        text:SetTextColor(1, 1, 1) -- Crisp White for Report lines
+    end
+    
+    itemFrame:SetScript("OnEnter", function() 
+        if isCancelButton then 
+            text:SetTextColor(1, 1, 1) 
+        else
+            text:SetTextColor(0.7, 0.7, 0.7) -- Dims white lines to light grey on hover
+        end
+    end)
+    
+    itemFrame:SetScript("OnLeave", function() 
+        if isCancelButton then 
+            text:SetTextColor(0.95, 0.82, 0) 
+        else
+            text:SetTextColor(1, 1, 1) 
+        end
+    end)
+    
+    itemFrame:SetScript("OnClick", onClickFunc)
+    
+    return itemFrame
+end
+
+-- Line 1: Report to Guild Chat
+CreateDropdownTextItem("Report to Guild Chat", 0, function()
+    reportFrame:Hide()
+    if currentViewTypeRef == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
+        HeroStats_Report_PersonalDamage(currentBarDataRef, "GUILD")
+    elseif currentViewTypeRef == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
+        HeroStats_Report_PersonalHealing(currentBarDataRef, "GUILD")
+    elseif HeroStats_Report_ActivePageOverview then
+        HeroStats_Report_ActivePageOverview(currentBarDataRef, currentViewTypeRef, currentDurationRef, "GUILD")
+    end
+end)
+
+-- Line 2: Report to Instance (Raid/Party)
+CreateDropdownTextItem("Report to Instance (Raid/Party)", 1, function()
+    reportFrame:Hide()
+    local instanceChannel = IsInRaid() and "RAID" or (IsInGroup() and "PARTY" or "LOCAL")
+    if currentViewTypeRef == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
+        HeroStats_Report_PersonalDamage(currentBarDataRef, instanceChannel)
+    elseif currentViewTypeRef == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
+        HeroStats_Report_PersonalHealing(currentBarDataRef, instanceChannel)
+    elseif HeroStats_Report_ActivePageOverview then
+        HeroStats_Report_ActivePageOverview(currentBarDataRef, currentViewTypeRef, currentDurationRef, instanceChannel)
+    end
+end)
+
+-- Line 3: Report to Say (Local Zone)
+CreateDropdownTextItem("Report to Say (Local Zone)", 2, function()
+    reportFrame:Hide()
+    if currentViewTypeRef == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
+        HeroStats_Report_PersonalDamage(currentBarDataRef, "SAY")
+    elseif currentViewTypeRef == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
+        HeroStats_Report_PersonalHealing(currentBarDataRef, "SAY")
+    elseif HeroStats_Report_ActivePageOverview then
+        HeroStats_Report_ActivePageOverview(currentBarDataRef, currentViewTypeRef, currentDurationRef, "SAY")
+    end
+end)
+
+-- Line 4: Whisper Player...
+CreateDropdownTextItem("Whisper Player...", 3, function()
+    reportFrame:Hide()
+    -- Directly invokes your sterile Whisper target input popup dialog frame cleanly
+    StaticPopup_Show("HEROSTATS_REPORT_WHISPER_INPUT", nil, nil, { data = currentBarDataRef, viewType = currentViewTypeRef, duration = currentDurationRef })
+end)
+
+-- Line 5: NEW FIXED v1.0.0b2: Local Chat Output (Replaces the bugged Custom Channel option)
+-- COMMENT: Enforces routing straight into the sterile "LOCAL" chat printer bucket to secure copy-paste operations
+CreateDropdownTextItem("Report to Local Chat", 4, function()
+    reportFrame:Hide()
+    if currentViewTypeRef == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
+        HeroStats_Report_PersonalDamage(currentBarDataRef, "LOCAL")
+    elseif currentViewTypeRef == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
+        HeroStats_Report_PersonalHealing(currentBarDataRef, "LOCAL")
+    elseif HeroStats_Report_ActivePageOverview then
+        HeroStats_Report_ActivePageOverview(currentBarDataRef, currentViewTypeRef, currentDurationRef, "LOCAL")
+    end
+end)
+
+-- Line 6: Cancel
+CreateDropdownTextItem("Cancel", 5, function() reportFrame:Hide() end)
+
+-- 3. PUBLIC API ENTRY POINT: Anchor dynamically directly beneath your shoutButton element upon invocation
+function HeroStats_OpenReportDialog(viewType, barData, duration, parentButton)
+    if not barData then return end
+    
+    currentViewTypeRef = viewType
+    currentBarDataRef = barData
+    currentDurationRef = duration
+    
+    -- Snap the frame right below your physical chat bubble icon
+    local anchorElement = parentButton or shoutButton
+    if anchorElement then
+        reportFrame:ClearAllPoints()
+        reportFrame:SetPoint("TOPRIGHT", anchorElement, "BOTTOMRIGHT", 0, -2)
+    else
+        reportFrame:ClearAllPoints()
+        reportFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    end
+    
+    reportFrame:Show()
+end
+
+
+
+
 -- Forward declaration of layout objects to make functions globally secure inside this scope
 local filterButton, lockButton, nextButton, prevButton, sessionButton
 
@@ -262,13 +415,13 @@ if shoutButton:GetNormalTexture() then
     shoutButton:GetNormalTexture():SetAllPoints(shoutButton)
 end
 
--- FIXED v1.0.0b1: Main header button dynamically opens the unified ad-hoc reporting menu layout upon click
+-- FIXED v1.0.0b2: Main header button dynamically opens your clean custom report frame to avoid Blizzard UI Taint entirely
 shoutButton:SetScript("OnClick", function(self)
     -- 1. Query the true master page API configuration layers safely to resolve the active page
     local pageRecord = HeroStats_GetPageRecord and HeroStats_GetPageRecord(HeroStats_CurrentActivePage)
     local clickedViewType = pageRecord and pageRecord.name or "DAMAGE_DONE"
     
-    -- Symmetri calibration: Synchronize view mapping token names cleanly for overview data loops
+    -- Symmetry calibration: Synchronize view mapping token names cleanly for overview data loops
     if clickedViewType == "HEALING_DONE" then clickedViewType = "HEALING" end
     if clickedViewType == "EFFICIENCY" then clickedViewType = "OVERHEALING" end
 
@@ -287,54 +440,11 @@ shoutButton:SetScript("OnClick", function(self)
     -- FIXED v1.0.0b1: Forcing this to nil triggers the comm layer to read the true fightDuration from database logs
     local currentFightDuration = nil
 
-    -- Allocate or fetch the dedicated Blizzard dropdown frame template asset securely
-    local menuFrame = HeroStatsHeaderReportMenuFrame or CreateFrame("Frame", "HeroStatsHeaderReportMenuFrame", UIParent, "UIDropdownMenuTemplate")
-
-    -- 3. Define the ad-hoc channels layout map cleanly. Menu items explicitly pass the channel choices!
-    local menuList = {
-        { text = "Report Session Breakdown:", isTitle = true, notCheckable = true },
-        
-        { text = "Report to Guild Chat", notCheckable = true, func = function() 
-            if HeroStats_Report_ActivePageOverview and activeSessionData then
-                HeroStats_Report_ActivePageOverview(activeSessionData, clickedViewType, currentFightDuration, "GUILD")
-            end
-        end },
-        
-        { text = "Report to Instance (Raid/Party)", notCheckable = true, func = function() 
-            local instanceChannel = IsInRaid() and "RAID" or (IsInGroup() and "PARTY" or "LOCAL")
-            if HeroStats_Report_ActivePageOverview and activeSessionData then
-                HeroStats_Report_ActivePageOverview(activeSessionData, clickedViewType, currentFightDuration, instanceChannel)
-            end
-        end },
-        
-        { text = "Report to Say (Local Zone)", notCheckable = true, func = function() 
-            if HeroStats_Report_ActivePageOverview and activeSessionData then
-                HeroStats_Report_ActivePageOverview(activeSessionData, clickedViewType, currentFightDuration, "SAY")
-            end
-        end },
-        
-        { text = "Report to Custom Channel...", notCheckable = true, func = function() 
-            local dialog = StaticPopup_Show("HEROSTATS_REPORT_CHANNEL_INPUT")
-            if dialog then dialog.data = { data = activeSessionData, viewType = clickedViewType, duration = currentFightDuration } end 
-        end },
-        
-        { text = "Whisper Player...", notCheckable = true, func = function() 
-            local dialog = StaticPopup_Show("HEROSTATS_REPORT_WHISPER_INPUT")
-            if dialog then dialog.data = { data = activeSessionData, viewType = clickedViewType, duration = currentFightDuration } end 
-        end },
-        
-        { text = "Cancel", notCheckable = true, func = function() CloseDropDownMenus() end }
-    }
-    
-    -- Initialize and inject the menu items into the Blizzard UI frame layout
-    UIDropDownMenu_Initialize(menuFrame, function(self, level)
-        for _, item in ipairs(menuList) do
-            UIDropDownMenu_AddButton(item, level)
-        end
-    end, "MENU")
-    
-    -- Toggle and display the dropdown menu directly beneath the shoutButton frame element
-    ToggleDropDownMenu(1, nil, menuFrame, self, 0, 0)
+    -- 3. TAINT-FREE COUPLING: Direct ingress path wakes up your independent custom report frame dialog
+    if activeSessionData then
+        -- FIXED v1.0.0b2: Passes 'self' (the button frame) to lock the dynamic positioning engine straight below the icon!
+        HeroStats_OpenReportDialog(clickedViewType, activeSessionData, currentFightDuration, self)
+    end
 end)
 
 -- FIXED v1.0.0b1: Streamlined compact tooltip display
@@ -399,36 +509,40 @@ StaticPopupDialogs["HEROSTATS_REPORT_WHISPER_INPUT"] = {
             local barData = data.data
             local duration = data.duration
 
-            -- CENTRAL LOGIC INGRESS: All 14 pages are mapped exclusively in this single block
-            if viewType == "DAMAGE_DONE" and HeroStats_Report_DamageDone then
-                HeroStats_Report_DamageDone(barData, "WHISPER", false, targetPlayer, duration)
-            elseif viewType == "HEALING_DONE" and HeroStats_Report_HealingDone then
-                HeroStats_Report_HealingDone(barData, "WHISPER", false, targetPlayer, duration)
-            elseif viewType == "DMG_CRIT" and HeroStats_Report_DamageCrits then
-                HeroStats_Report_DamageCrits(barData, "WHISPER", false, targetPlayer)
-            elseif viewType == "HEAL_CRIT" and HeroStats_Report_HealingCrits then
-                HeroStats_Report_HealingCrits(barData, "WHISPER", false, targetPlayer)
-            elseif viewType == "DMG_TAKEN" and HeroStats_Report_DamageTaken then
-                HeroStats_Report_DamageTaken(barData, "WHISPER", false, targetPlayer, duration)
-            elseif viewType == "EFFICIENCY" and HeroStats_Report_Efficiency then
-                HeroStats_Report_Efficiency(barData, "WHISPER", false, targetPlayer)
-            elseif viewType == "MANA_EFF" and HeroStats_Report_ManaEff then
-                HeroStats_Report_ManaEff(barData, "WHISPER", false, targetPlayer)
-            elseif viewType == "MANA_GAINED" and HeroStats_Report_ManaGained then
-                HeroStats_Report_ManaGained(barData, "WHISPER", false, targetPlayer)
-            elseif viewType == "DISPELS" and HeroStats_Report_Dispels then
-                HeroStats_Report_Dispels(barData, "WHISPER", false, targetPlayer)
-            elseif viewType == "BUFFS" and HeroStats_Report_Buffs then
-                HeroStats_Report_Buffs(barData, "WHISPER", false, targetPlayer)
-            elseif viewType == "DEATHS" and HeroStats_Report_Deaths then
-                HeroStats_Report_Deaths(barData, "WHISPER", false, targetPlayer)
-            elseif viewType == "RESURRECTS" and HeroStats_Report_Resurrects then
-                HeroStats_Report_Resurrects(barData, "WHISPER", false, targetPlayer)
-            elseif viewType == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
-                HeroStats_Report_PersonalDamage(barData, "WHISPER", false, targetPlayer)
-            elseif viewType == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
-                HeroStats_Report_PersonalHealing(barData, "WHISPER", false, targetPlayer)
-            end
+            -- FIXED v1.0.0b2: Asynchronous Timer Breakout completely eliminates Blizzard StaticPopup UI Taint!
+            -- COMMENT: Delays execution by 0 seconds to escape Blizzard's protected code frame before calling SendChatMessage
+            C_Timer.After(0, function()
+                -- CENTRAL LOGIC INGRESS: All 14 pages are safely mapped in a 100% taint-clean asynchronous environment
+                if viewType == "DAMAGE_DONE" and HeroStats_Report_DamageDone then
+                    HeroStats_Report_DamageDone(barData, "WHISPER", false, targetPlayer, duration)
+                elseif viewType == "HEALING_DONE" and HeroStats_Report_HealingDone then
+                    HeroStats_Report_HealingDone(barData, "WHISPER", false, targetPlayer, duration)
+                elseif viewType == "DMG_CRIT" and HeroStats_Report_DamageCrits then
+                    HeroStats_Report_DamageCrits(barData, "WHISPER", false, targetPlayer)
+                elseif viewType == "HEAL_CRIT" and HeroStats_Report_HealingCrits then
+                    HeroStats_Report_HealingCrits(barData, "WHISPER", false, targetPlayer)
+                elseif viewType == "DMG_TAKEN" and HeroStats_Report_DamageTaken then
+                    HeroStats_Report_DamageTaken(barData, "WHISPER", false, targetPlayer, duration)
+                elseif viewType == "EFFICIENCY" and HeroStats_Report_Efficiency then
+                    HeroStats_Report_Efficiency(barData, "WHISPER", false, targetPlayer)
+                elseif viewType == "MANA_EFF" and HeroStats_Report_ManaEff then
+                    HeroStats_Report_ManaEff(barData, "WHISPER", false, targetPlayer)
+                elseif viewType == "MANA_GAINED" and HeroStats_Report_ManaGained then
+                    HeroStats_Report_ManaGained(barData, "WHISPER", false, targetPlayer)
+                elseif viewType == "DISPELS" and HeroStats_Report_Dispels then
+                    HeroStats_Report_Dispels(barData, "WHISPER", false, targetPlayer)
+                elseif viewType == "BUFFS" and HeroStats_Report_Buffs then
+                    HeroStats_Report_Buffs(barData, "WHISPER", false, targetPlayer)
+                elseif viewType == "DEATHS" and HeroStats_Report_Deaths then
+                    HeroStats_Report_Deaths(barData, "WHISPER", false, targetPlayer)
+                elseif viewType == "RESURRECTS" and HeroStats_Report_Resurrects then
+                    HeroStats_Report_Resurrects(barData, "WHISPER", false, targetPlayer)
+                elseif viewType == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
+                    HeroStats_Report_PersonalDamage(barData, "WHISPER", false, targetPlayer)
+                elseif viewType == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
+                    HeroStats_Report_PersonalHealing(barData, "WHISPER", false, targetPlayer)
+                end
+            end)
         end
     end,
     EditBoxOnEnterPressed = function(self)
@@ -464,36 +578,39 @@ StaticPopupDialogs["HEROSTATS_REPORT_CHANNEL_INPUT"] = {
             local barData = data.data
             local duration = data.duration
 
-            -- CENTRAL LOGIC INGRESS: All 14 pages are mapped exclusively in this single channel block
-            if viewType == "DAMAGE_DONE" and HeroStats_Report_DamageDone then
-                HeroStats_Report_DamageDone(barData, "CHANNEL", true, channelNum, duration)
-            elseif viewType == "HEALING_DONE" and HeroStats_Report_HealingDone then
-                HeroStats_Report_HealingDone(barData, "CHANNEL", true, channelNum, duration)
-            elseif viewType == "DMG_CRIT" and HeroStats_Report_DamageCrits then
-                HeroStats_Report_DamageCrits(barData, "CHANNEL", true, channelNum)
-            elseif viewType == "HEAL_CRIT" and HeroStats_Report_HealingCrits then
-                HeroStats_Report_HealingCrits(barData, "CHANNEL", true, channelNum)
-            elseif viewType == "DMG_TAKEN" and HeroStats_Report_DamageTaken then
-                HeroStats_Report_DamageTaken(barData, "CHANNEL", true, channelNum, duration)
-            elseif viewType == "EFFICIENCY" and HeroStats_Report_Efficiency then
-                HeroStats_Report_Efficiency(barData, "CHANNEL", true, channelNum)
-            elseif viewType == "MANA_EFF" and HeroStats_Report_ManaEff then
-                HeroStats_Report_ManaEff(barData, "CHANNEL", true, channelNum)
-            elseif viewType == "MANA_GAINED" and HeroStats_Report_ManaGained then
-                HeroStats_Report_ManaGained(barData, "CHANNEL", true, channelNum)
-            elseif viewType == "DISPELS" and HeroStats_Report_Dispels then
-                HeroStats_Report_Dispels(barData, "CHANNEL", true, channelNum)
-            elseif viewType == "BUFFS" and HeroStats_Report_Buffs then
-                HeroStats_Report_Buffs(barData, "CHANNEL", true, channelNum)
-            elseif viewType == "DEATHS" and HeroStats_Report_Deaths then
-                HeroStats_Report_Deaths(barData, "CHANNEL", true, channelNum)
-            elseif viewType == "RESURRECTS" and HeroStats_Report_Resurrects then
-                HeroStats_Report_Resurrects(barData, "CHANNEL", true, channelNum)
-            elseif viewType == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
-                HeroStats_Report_PersonalDamage(barData, "CHANNEL", true, channelNum)
-            elseif viewType == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
-                HeroStats_Report_PersonalHealing(barData, "CHANNEL", true, channelNum)
-            end
+            -- FIXED v1.0.0b2: Asynchronous Timer Breakout completely eliminates Blizzard StaticPopup UI Taint!
+            C_Timer.After(0, function()
+                -- CENTRAL LOGIC INGRESS: All 14 pages are mapped exclusively in this single channel block
+                if viewType == "DAMAGE_DONE" and HeroStats_Report_DamageDone then
+                    HeroStats_Report_DamageDone(barData, "CHANNEL", true, channelNum, duration)
+                elseif viewType == "HEALING_DONE" and HeroStats_Report_HealingDone then
+                    HeroStats_Report_HealingDone(barData, "CHANNEL", true, channelNum, duration)
+                elseif viewType == "DMG_CRIT" and HeroStats_Report_DamageCrits then
+                    HeroStats_Report_DamageCrits(barData, "CHANNEL", true, channelNum)
+                elseif viewType == "HEAL_CRIT" and HeroStats_Report_HealingCrits then
+                    HeroStats_Report_HealingCrits(barData, "CHANNEL", true, channelNum)
+                elseif viewType == "DMG_TAKEN" and HeroStats_Report_DamageTaken then
+                    HeroStats_Report_DamageTaken(barData, "CHANNEL", true, channelNum, duration)
+                elseif viewType == "EFFICIENCY" and HeroStats_Report_Efficiency then
+                    HeroStats_Report_Efficiency(barData, "CHANNEL", true, channelNum)
+                elseif viewType == "MANA_EFF" and HeroStats_Report_ManaEff then
+                    HeroStats_Report_ManaEff(barData, "CHANNEL", true, channelNum)
+                elseif viewType == "MANA_GAINED" and HeroStats_Report_ManaGained then
+                    HeroStats_Report_ManaGained(barData, "CHANNEL", true, channelNum)
+                elseif viewType == "DISPELS" and HeroStats_Report_Dispels then
+                    HeroStats_Report_Dispels(barData, "CHANNEL", true, channelNum)
+                elseif viewType == "BUFFS" and HeroStats_Report_Buffs then
+                    HeroStats_Report_Buffs(barData, "CHANNEL", true, channelNum)
+                elseif viewType == "DEATHS" and HeroStats_Report_Deaths then
+                    HeroStats_Report_Deaths(barData, "CHANNEL", true, channelNum)
+                elseif viewType == "RESURRECTS" and HeroStats_Report_Resurrects then
+                    HeroStats_Report_Resurrects(barData, "CHANNEL", true, channelNum)
+                elseif viewType == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
+                    HeroStats_Report_PersonalDamage(barData, "CHANNEL", true, channelNum)
+                elseif viewType == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
+                    HeroStats_Report_PersonalHealing(barData, "CHANNEL", true, channelNum)
+                end
+            end)
         end
     end,
     EditBoxOnEnterPressed = function(self)
@@ -878,83 +995,13 @@ function HeroStats_RenderRaidBars(sortedData, maxVal, viewType, totalRaidEffecti
                 -- FREEZE SCOPE: Capture active data pointers and rendering states instantly
                 local clickedData = data
                 local clickedViewType = viewType or pageName
-                local currentFightDuration = fightSeconds or 1
+                local currentFightDuration = fightSeconds or nil -- FIXED b2: Nil forces comm layer to fetch true duration
 
-                -- FIXED v1.0.0b1: Parameter isolation shield blocks Blizzard frame references from leaking into comm layers
-                local function ExecuteDirectReport(targetChannel)
-                    -- FORCED ISOLATION: Explicitly passes the frozen 'clickedData' object as argument 1
-                    if clickedViewType == "DAMAGE_DONE" and HeroStats_Report_DamageDone then
-                        HeroStats_Report_DamageDone(clickedData, targetChannel, false, nil, currentFightDuration)
-                    elseif clickedViewType == "HEALING_DONE" and HeroStats_Report_HealingDone then
-                        HeroStats_Report_HealingDone(clickedData, targetChannel, false, nil, currentFightDuration)
-                    elseif clickedViewType == "DMG_CRIT" and HeroStats_Report_DamageCrits then
-                        HeroStats_Report_DamageCrits(clickedData, targetChannel, false, nil)
-                    elseif clickedViewType == "HEAL_CRIT" and HeroStats_Report_HealingCrits then
-                        HeroStats_Report_HealingCrits(clickedData, targetChannel, false, nil)
-                    elseif clickedViewType == "DMG_TAKEN" and HeroStats_Report_DamageTaken then
-                        HeroStats_Report_DamageTaken(clickedData, targetChannel, false, nil, currentFightDuration)
-                    elseif clickedViewType == "EFFICIENCY" and HeroStats_Report_Efficiency then
-                        HeroStats_Report_Efficiency(clickedData, targetChannel, false, nil)
-                    elseif clickedViewType == "MANA_EFF" and HeroStats_Report_ManaEff then
-                        HeroStats_Report_ManaEff(clickedData, targetChannel, false, nil)
-                    elseif clickedViewType == "MANA_GAINED" and HeroStats_Report_ManaGained then
-                        HeroStats_Report_ManaGained(clickedData, targetChannel, false, nil)
-                    elseif clickedViewType == "DISPELS" and HeroStats_Report_Dispels then
-                        HeroStats_Report_Dispels(clickedData, targetChannel, false, nil)
-                    elseif clickedViewType == "BUFFS" and HeroStats_Report_Buffs then
-                        HeroStats_Report_Buffs(clickedData, targetChannel, false, nil)
-                    elseif clickedViewType == "DEATHS" and HeroStats_Report_Deaths then
-                        HeroStats_Report_Deaths(clickedData, targetChannel, false, nil)
-                    elseif clickedViewType == "RESURRECTS" and HeroStats_Report_Resurrects then
-                        HeroStats_Report_Resurrects(clickedData, targetChannel, false, nil)
-                    elseif clickedViewType == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
-                        HeroStats_Report_PersonalDamage(clickedData, targetChannel, false, nil)
-                    elseif clickedViewType == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
-                        HeroStats_Report_PersonalHealing(clickedData, targetChannel, false, nil)
-                    end
+                -- TAINT-FREE COUPLING: Direct ingress path wakes up your independent custom report frame dialog
+                if HeroStats_OpenReportDialog then
+                    -- FIXED v1.0.0b2: Passes 'self' (the physical bar frame) to anchor your dropdown layout cleanly at the cursor
+                    HeroStats_OpenReportDialog(clickedViewType, clickedData, currentFightDuration, self)
                 end
-
-                local menuFrame = HeroStatsReportMenuFrame or CreateFrame("Frame", "HeroStatsReportMenuFrame", UIParent, "UIDropdownMenuTemplate")
-
-                -- Dynamic Ad-Hoc Menu Map layout routing securely inside UIDropDownMenu_Initialize
-                local menuList = {
-                    { text = "Select Target Channel:", isTitle = true, notCheckable = true },
-                    
-                    { text = "Report to Guild Chat", notCheckable = true, func = function() 
-                        ExecuteDirectReport("GUILD") -- Handled instantly in 1 line!
-                    end },
-                    
-                    { text = "Report to Instance (Raid/Party)", notCheckable = true, func = function() 
-                        local channel = IsInRaid() and "RAID" or (IsInGroup() and "PARTY" or "SAY")
-                        ExecuteDirectReport(channel) -- Handled instantly in 1 line!
-                    end },
-                    
-                    { text = "Report to Say (Local Zone)", notCheckable = true, func = function() 
-                        ExecuteDirectReport("SAY") -- Handled instantly in 1 line!
-                    end },
-                    
-                    { text = "Report to Custom Channel...", notCheckable = true, func = function() 
-                        local dialog = StaticPopup_Show("HEROSTATS_REPORT_CHANNEL_INPUT")
-                        if dialog then dialog.data = { data = clickedData, viewType = clickedViewType, duration = currentFightDuration } end 
-                    end },
-                    
-                    { text = "Whisper Player...", notCheckable = true, func = function() 
-                        local dialog = StaticPopup_Show("HEROSTATS_REPORT_WHISPER_INPUT")
-                        if dialog then dialog.data = { data = clickedData, viewType = clickedViewType, duration = currentFightDuration } end 
-                    end },
-                    
-                    { text = "Cancel", notCheckable = true, func = function() CloseDropDownMenus() end }
-                }
-                
-                -- Master initialization injection mapping loop (Universal Blizzard drop-down motor)
-                UIDropDownMenu_Initialize(menuFrame, function(self, level)
-                    for _, item in ipairs(menuList) do
-                        UIDropDownMenu_AddButton(item, level)
-                    end
-                end, "MENU")
-                
-                -- Toggle the drop-down menu asset securely anchored onto your hardware cursor location
-                ToggleDropDownMenu(1, nil, menuFrame, "cursor", 0, 0)
             end
         end)
 
