@@ -628,11 +628,11 @@ local function GetLiveSpellManaCost(spellID)
     return 0
 end
 
--- FIXED v1.0.0a3: Symmetrical Notification Engine with Solo-Group Fallback Protection
-function HeroStats_TriggerRecordNotification(spellName, targetName, amountValue, isCrit, isHealing)
+-- FIXED v1.0.0b2: Symmetrical Notification Engine with Solo-Group Fallback Protection
+function HeroStats_TriggerRecordNotification(spellName, targetName, amountValue, isCrit, isDamage)
     if not HeroStatsSettings then return end
     
-    local notifyMode = HeroStatsSettings.recordNotifyMode or 2 -- Fallback cleanly to Local Chat (Mode 2)
+    local notifyMode = HeroStatsSettings.recordNotifyMode or 3
     
     -- MODE 1 SHIELD: If set to 1 (Silent Mode), we completely bypass the pipeline instantly
     if notifyMode > 1 then
@@ -686,7 +686,9 @@ local activeHealers = nil;
 
 --  SPELL_CAST_SUCCESS - processed both IN and OUT of combat)
 local function OnEvent_SPELL_CAST_SUCCESS(eventType, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags)
-    local _, spellName = select(12, CombatLogGetCurrentEventInfo())
+    local _, spellName, _, amount = select(12, CombatLogGetCurrentEventInfo())
+    if not amount then return; end;
+
     local cleanSourceName = sourceName and string.match(sourceName, "([^-]+)") or "Unknown"
     local healerClass = groupRosterCache[cleanSourceName]
 
@@ -810,10 +812,10 @@ local function OnEvent_DAMAGE(eventType, sourceGUID, sourceName, sourceFlags, de
         spellName = "Melee"
     else
         -- For all SPELL and PERIODIC (DoT) hits:
-        -- Argument 12 = SpellID, Argument 13 = SpellName, Argument 15 = Damage Amount
-        spellID = select(12, CombatLogGetCurrentEventInfo())
-        spellName = select(13, CombatLogGetCurrentEventInfo()) or "Unknown Spell"
-        amount = select(15, CombatLogGetCurrentEventInfo()) or 0
+        spellID, spellName, _, amount = select(12, CombatLogGetCurrentEventInfo())
+
+        spellName = spellName or "Unknown Spell"
+        amount = amount or 0
         
         -- Intercept DoT variants cleanly before processing databases
         if eventType == "SPELL_PERIODIC_DAMAGE" then

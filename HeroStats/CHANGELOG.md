@@ -1,7 +1,12 @@
 # Changelog - HeroStats v1.0.0b2
 
+## [Changed]
+* Changed Report default channel to be window warnings.
+
 ## [Fixed]
+* Fixed some non-damage/healing spells appearing on meters; e.g. Conjure Water for a mage!
 * Fixed hardcoded (wrong) version number being returned in /hs config - doh!
+* Fixed Hunters being recorded on Death meters when feigning death!
 
 # Changelog - HeroStats v1.0.0b1
 
