@@ -5,13 +5,10 @@
 -- FIXED v1.0.0b1: File-level static constant cache optimizes memory by preventing table recreation on click
 local HEROSTATS_VIEW_DISPLAY_NAMES = {
     ["DAMAGE_DONE"]         = "Damage Done",
-    ["HEALING"]             = "Healing Done",
     ["HEALING_DONE"]        = "Healing Done",
     ["DMG_CRIT"]            = "Damage Crits",
     ["HEAL_CRIT"]           = "Healing Crits",
     ["DAMAGE_TAKEN"]        = "Damage Taken",
-    ["DMG_TAKEN"]           = "Damage Taken",
-    ["OVERHEALING"]         = "Overhealing",
     ["EFFICIENCY"]          = "Overhealing",
     ["MANA_EFF"]            = "Heal per Mana",
     ["MANA_GAINED"]         = "Mana Gained",
@@ -215,6 +212,8 @@ end
 function HeroStats_Report_DamageTaken(playerData, channel, isCustom, customNum, fightSeconds)
     if not playerData or not playerData.spellTaken then return end
     
+    print("HeroStats_Report_DamageTaken - entering")
+
     -- FIXED v1.0.0b1: Dynamic Channel Validation Interceptor routes into mock LOCAL state safely
     if not HeroStats_IsChannelAccessible or not HeroStats_IsChannelAccessible(channel) then
         channel = "LOCAL"
@@ -228,10 +227,18 @@ function HeroStats_Report_DamageTaken(playerData, channel, isCustom, customNum, 
     table.insert(msgQueue, headerMsg)
 
     local sortedSpells = {}
-    for spellName, amt in pairs(playerData.spellTaken) do
-        if amt > 0 then table.insert(sortedSpells, { name = spellName, amount = amt }) end 
+    for spellName, dataBlock in pairs(playerData.spellTaken or playerData.spellDamage) do
+        local actualAmount = 0
+        if type(dataBlock) == "table" then
+            actualAmount = dataBlock.amt or 0
+        else
+            actualAmount = tonumber(dataBlock) or 0
+        end
+
+        if actualAmount > 0 then 
+            table.insert(sortedSpells, { name = spellName, amount = actualAmount }) 
+        end
     end
-    table.sort(sortedSpells, function(a, b) return a.amount > b.amount end)
 
     for i = 1, math.min(5, #sortedSpells) do
         local s = sortedSpells[i]
@@ -739,11 +746,11 @@ function HeroStats_Report_ActivePageOverview(masterSession, viewType, fightSecon
             item.name = item.name or pData.name or pNameOrGuid
             
             -- Enforces perfect structural alignment across ALL views using 'item' context exclusively
-            if viewType == "HEALING" or viewType == "HEALING_DONE" then 
+            if viewType == "HEALING_DONE" then 
                 item.sortAmount = item.effective or 0
             elseif viewType == "HEAL_CRIT" then 
                 item.sortAmount = item.healCritPct or 0
-            elseif viewType == "OVERHEALING" or viewType == "EFFICIENCY" then 
+            elseif viewType == "EFFICIENCY" then 
                 item.sortAmount = item.percent or 100
             elseif viewType == "MANA_EFF" then 
                 item.sortAmount = item.hpm or 0
@@ -753,7 +760,7 @@ function HeroStats_Report_ActivePageOverview(masterSession, viewType, fightSecon
                 item.sortAmount = item.damageDone or 0
             elseif viewType == "DMG_CRIT" then 
                 item.sortAmount = item.dmgCritPct or 0
-            elseif viewType == "DAMAGE_TAKEN" or viewType == "DMG_TAKEN" then 
+            elseif viewType == "DAMAGE_TAKEN" then 
                 item.sortAmount = item.damageTaken or 0
             elseif viewType == "DISPELS" then 
                 item.sortAmount = item.dispels or 0
@@ -776,7 +783,7 @@ function HeroStats_Report_ActivePageOverview(masterSession, viewType, fightSecon
 
     -- Sorter maps cleanly onto descending ranks
     table.sort(sortedList, function(a, b)
-        if viewType == "OVERHEALING" or viewType == "EFFICIENCY" then
+        if viewType == "EFFICIENCY" then
             return (a.sortAmount or 100) < (b.sortAmount or 100) -- Lower percentage = higher efficiency ranking
         elseif viewType == "PERSONAL_DMG_RECORDS" or viewType == "PERSONAL_HEAL_RECORDS" then
             local aNormal = (a.normal and type(a.normal) == "table") and (a.normal.amount or 0) or 0
@@ -809,12 +816,12 @@ function HeroStats_Report_ActivePageOverview(masterSession, viewType, fightSecon
         local data = sortedList[i]
         local valueText = "0"
 
-        if viewType == "HEALING" or viewType == "HEALING_DONE" then
+        if viewType == "HEALING_DONE" then
             local formattedAmt = FormatDotNumber and FormatDotNumber(data.effective) or data.effective
             valueText = string.format("%s (%.0f HPS)", formattedAmt, (data.effective or 0) / duration)
         elseif viewType == "HEAL_CRIT" then
             valueText = string.format("%.1f%% Crit", data.healCritPct or 0)
-        elseif viewType == "OVERHEALING" or viewType == "EFFICIENCY" then
+        elseif viewType == "EFFICIENCY" then
             valueText = string.format("%.1f%% Efficiency", data.percent or 0)
         elseif viewType == "MANA_EFF" then
             valueText = string.format("%.1f HPM", data.hpm or 0)
@@ -826,7 +833,7 @@ function HeroStats_Report_ActivePageOverview(masterSession, viewType, fightSecon
             valueText = string.format("%s (%.0f DPS)", formattedAmt, (data.damageDone or 0) / duration)
         elseif viewType == "DMG_CRIT" then
             valueText = string.format("%.1f%% Crit", data.dmgCritPct or 0)
-        elseif viewType == "DAMAGE_TAKEN" or viewType == "DMG_TAKEN" then
+        elseif viewType == "DAMAGE_TAKEN" then
             local formattedAmt = FormatDotNumber and FormatDotNumber(data.damageTaken) or data.damageTaken
             valueText = string.format("%s (%.0f DTPS)", formattedAmt, (data.damageTaken or 0) / duration)
         elseif viewType == "DISPELS" then valueText = string.format("%d Dispels", data.dispels or 0)
