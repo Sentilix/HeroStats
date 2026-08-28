@@ -274,23 +274,41 @@ function HeroStats_Report_HealingCrits(playerData, channel, isCustom, customNum)
     local headerMsg = string.format("HeroStats - Top Healing Crits for %s:", playerData.name or "Unknown")
     table.insert(msgQueue, headerMsg)
 
+    -- FIXED v1.0.0b3: Healing Crits Detailed Comm Unpacker Shield
+    -- COMMENT: Dynamically extracts nested database fields to ensure 0-amt spells cleanly pass into chat queues
     local sortedHeals = {}
     local totalSessionCritHeal = 0
+    
     for spellName, cr in pairs(playerData.spellHealCrits) do
         local totalCritHeal = cr.amt or 0
-        if totalCritHeal > 0 then
-            table.insert(sortedHeals, { name = spellName, crits = cr.crits or 0, amt = totalCritHeal })
+        local totalHits = cr.hits or 0
+        local actualCrits = cr.crits or 0
+        
+        -- Open the sluice gates if the spell has valid activity or hit records
+        if totalHits > 0 or totalCritHeal > 0 or actualCrits > 0 then
+            table.insert(sortedHeals, { name = spellName, crits = actualCrits, amt = totalCritHeal, hits = totalHits })
             totalSessionCritHeal = totalSessionCritHeal + totalCritHeal
         end
     end
-    table.sort(sortedHeals, function(a, b) return a.amt > b.amt end)
+
+    -- Sort the spells safely by their crit count so top crits get serialized first
+    table.sort(sortedHeals, function(a, b) 
+        if a.crits == b.crits then
+            return a.amt > b.amt
+        end
+        return a.crits > b.crits 
+    end)
+
     if totalSessionCritHeal == 0 then totalSessionCritHeal = 1 end
 
+    -- STEP 3: Build and insert lines into your msgQueue cleanly
     for i = 1, math.min(5, #sortedHeals) do
         local h = sortedHeals[i]
-        local spellCritSharePct = (h.amt / totalSessionCritHeal) * 100
-        local formattedHeal = FormatDotNumber and FormatDotNumber(h.amt) or h.amt
-        local lineMsg = string.format("%d. %s: %s (%d crits) (%.1f%%)", i, h.name, formattedHeal, h.crits, spellCritSharePct)
+        local sharePct = (h.amt / totalSessionCritHeal) * 100
+        local formattedAmt = FormatDotNumber and FormatDotNumber(h.amt) or h.amt
+        
+        -- Formats the line to match your new bulletproof layout framework perfectly
+        local lineMsg = string.format("%d. %s: %s (%d crits / %d hits) (%.1f%%)", i, h.name, formattedAmt, h.crits, h.hits, sharePct)
         table.insert(msgQueue, lineMsg)
     end
     

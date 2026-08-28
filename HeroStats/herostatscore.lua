@@ -233,6 +233,9 @@ function coreFrame.RefreshStats()
     local topDamageDoneValue = 0
     local topDamageTakenValue = 0
     local topManaGainedValue = 0
+    local topDmgCritValue = 0
+    local topHealCritValue = 0
+    local topOverhealValue = 0
 
     local activeThreshold = HEROSTATS_MANA_THRESHOLD or 300
     if not IsInGroup() then activeThreshold = 0 end
@@ -336,6 +339,8 @@ function coreFrame.RefreshStats()
                     data.damageDone = data.damageDone or 0
                     data.damageTaken = data.damageTaken or 0
                     data.manaGained = data.manaGained or 0
+                    data.dmgCritPct = data.dmgCritPct or 0
+                    data.healCritPct = data.healCritPct or 0
 
                     -- Calculate and track factual HPM yields safely
                     if data.manaUsed > 0 then
@@ -352,6 +357,9 @@ function coreFrame.RefreshStats()
                     if data.damageTaken > topDamageTakenValue then topDamageTakenValue = data.damageTaken end
                     if data.buffs > topBuffsValue then topBuffsValue = data.buffs end
                     if data.manaGained > topManaGainedValue then topManaGainedValue = data.manaGained end
+                    if data.dmgCritPct > topDmgCritValue then topDmgCritValue = data.dmgCritPct end
+                    if data.healCritPct > topHealCritValue then topHealCritValue = data.healCritPct end
+                    if HEALER_CLASSES[data.class] and data.percent > topOverhealValue then topOverhealValue = data.percent end
 
                     -- Inside your data loop right before the "if shouldInclude then" check:
                     -- FIXED v0.10.0: Live calculations for master critical strike percentage yields
@@ -454,9 +462,9 @@ function coreFrame.RefreshStats()
         if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, topDamageDoneValue, "DAMAGE_DONE", 0, viewTitle) end
         
     elseif pageName == "DMG_CRIT" then
-        -- Sort descending by damage crit percentage, fallback alphabetically
         table.sort(sortedHealers, function(a, b) return (a.dmgCritPct == b.dmgCritPct) and (a.name < b.name) or (a.dmgCritPct > b.dmgCritPct) end)
-        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, 100, "DMG_CRIT", 0, viewTitle) end
+        local finalMax = (topDmgCritValue > 0) and topDmgCritValue or 100        
+        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, finalMax, "DMG_CRIT", 0, viewTitle) end
 
     elseif pageName == "DAMAGE_TAKEN" then
         table.sort(sortedHealers, function(a, b) return (a.damageTaken == b.damageTaken) and (a.name < b.name) or (a.damageTaken > b.damageTaken) end)
@@ -467,13 +475,14 @@ function coreFrame.RefreshStats()
         if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, topHealerAmount, "HEALING_DONE", totalRaidEffective, viewTitle) end
         
     elseif pageName == "HEAL_CRIT" then
-        -- Sort descending by healing crit percentage, fallback alphabetically
         table.sort(sortedHealers, function(a, b) return (a.healCritPct == b.healCritPct) and (a.name < b.name) or (a.healCritPct > b.healCritPct) end)
-        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, 100, "HEAL_CRIT", 0, viewTitle) end
+        local finalMax = (topHealCritValue > 0) and topHealCritValue or 100
+        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, finalMax, "HEAL_CRIT", 0, viewTitle) end
 
     elseif pageName == "EFFICIENCY" then
-        table.sort(sortedHealers, function(a, b) return (a.percent == b.percent) and (a.name < b.name) or (a.percent > b.percent) end)       
-        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, 100, "EFFICIENCY", 0, viewTitle) end
+        table.sort(sortedHealers, function(a, b) return (a.percent == b.percent) and (a.name < b.name) or (a.percent > b.percent) end)
+        local finalMax = (topOverhealValue > 0) and topOverhealValue or 100
+        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, finalMax, "EFFICIENCY", 0, viewTitle) end
         
     elseif pageName == "MANA_EFF" then
         table.sort(sortedHealers, function(a, b) return (a.hpm == b.hpm) and (a.name < b.name) or (a.hpm > b.hpm) end)

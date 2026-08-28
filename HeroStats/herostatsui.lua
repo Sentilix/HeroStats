@@ -1063,58 +1063,79 @@ function HeroStats_RenderRaidBars(sortedData, maxVal, viewType, totalRaidEffecti
             GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
             GameTooltip:ClearLines()
 
-            if pageName == "DMG_CRIT" or pageName == "HEAL_CRIT" then
-                local titleText = (pageName == "DMG_CRIT") and "Top Critical Damage Abilities:" or "Top Critical Healing Abilities:"
-                GameTooltip:AddLine(titleText, 1, 1, 1)
-                
-                if pageName == "DMG_CRIT" then
-                    if data.spellCrits and next(data.spellCrits) ~= nil then
-                        local sortedSpells = {}
-                        local totalSessionCritDmg = 0
-                        for spellName, cr in pairs(data.spellCrits) do
-                            local totalCritDmg = cr.dmg or 0
-                            if totalCritDmg > 0 then
-                                table.insert(sortedSpells, { name = spellName, crits = cr.crits or 0, dmg = totalCritDmg })
-                                totalSessionCritDmg = totalSessionCritDmg + totalCritDmg
-                            end
+            -- FIXED v1.0.0b3: ISOLATED DAMAGE CRITS TOOLTIP PIPELINE
+            if pageName == "DMG_CRIT" then
+                GameTooltip:AddLine("Top Critical Damage Abilities:", 1, 1, 1)
+                if data.spellCrits and next(data.spellCrits) ~= nil then
+                    local sortedSpells = {}
+                    local totalSessionCritDmg = 0
+                    for spellName, cr in pairs(data.spellCrits) do
+                        local totalCritDmg = cr.dmg or 0
+                        if totalCritDmg > 0 then
+                            table.insert(sortedSpells, { name = spellName, crits = cr.crits or 0, dmg = totalCritDmg })
+                            totalSessionCritDmg = totalSessionCritDmg + totalCritDmg
                         end
-                        table.sort(sortedSpells, function(a, b) return a.dmg > b.dmg end)
-                        if totalSessionCritDmg == 0 then totalSessionCritDmg = 1 end
-                        for i = 1, math.min(10, #sortedSpells) do
-                            local s = sortedSpells[i]
-                            local spellCritSharePct = (s.dmg / totalSessionCritDmg) * 100
-                            local formattedDmg = FormatDotNumber and FormatDotNumber(s.dmg) or s.dmg
-                            GameTooltip:AddDoubleLine(i .. ". " .. s.name, string.format("%s (%d crits) (%.1f%%)", formattedDmg, s.crits, spellCritSharePct), 0.8, 0.8, 0.8, 1, 0.82, 0)
-                        end
-                    else
-                        GameTooltip:AddLine("No critical damage records found for this session.", 0.6, 0.6, 0.6, true)
                     end
-                elseif pageName == "HEAL_CRIT" then
-                    if data.spellHealCrits and next(data.spellHealCrits) ~= nil then
-                        local sortedHeals = {}
-                        local totalSessionCritHeal = 0
-                        for spellName, cr in pairs(data.spellHealCrits) do
-                            local totalCritHeal = cr.amt or 0
-                            if totalCritHeal > 0 then
-                                table.insert(sortedHeals, { name = spellName, crits = cr.crits or 0, amt = totalCritHeal })
-                                totalSessionCritHeal = totalSessionCritHeal + totalCritHeal
-                            end
-                        end
-                        table.sort(sortedHeals, function(a, b) return a.amt > b.amt end)
-                        if totalSessionCritHeal == 0 then totalSessionCritHeal = 1 end
-                        for i = 1, math.min(10, #sortedHeals) do
-                            local h = sortedHeals[i]
-                            local spellCritSharePct = (h.amt / totalSessionCritHeal) * 100
-                            local formattedHeal = FormatDotNumber and FormatDotNumber(h.amt) or h.amt
-                            GameTooltip:AddDoubleLine(i .. ". " .. h.name, string.format("%s (%d crits) (%.1f%%)", formattedHeal, h.crits, spellCritSharePct), 0.8, 0.8, 0.8, 1, 0.82, 0)
-                        end
-                    else
-                        GameTooltip:AddLine("No critical healing records found for this session.", 0.6, 0.6, 0.6, true)
+                    table.sort(sortedSpells, function(a, b) return a.dmg > b.dmg end)
+                    if totalSessionCritDmg == 0 then totalSessionCritDmg = 1 end
+                    for i = 1, math.min(10, #sortedSpells) do
+                        local s = sortedSpells[i]
+                        local spellCritSharePct = (s.dmg / totalSessionCritDmg) * 100
+                        local formattedDmg = FormatDotNumber and FormatDotNumber(s.dmg) or s.dmg
+                        GameTooltip:AddDoubleLine(i .. ". " .. s.name, string.format("%s (%d crits) (%.1f%%)", formattedDmg, s.crits, spellCritSharePct), 0.8, 0.8, 0.8, 1, 0.82, 0)
                     end
+                else
+                    GameTooltip:AddLine("No critical damage records found for this session.", 0.6, 0.6, 0.6, true)
                 end
-                
                 GameTooltip:Show()
-                return -- Ironclad exit pathway blocks the legacy session modules below completely!
+                return
+            end
+
+            if pageName == "HEAL_CRIT" then
+                GameTooltip:AddLine("Top Critical Healing Abilities:", 1, 1, 1)
+                if data.spellHealCrits and next(data.spellHealCrits) ~= nil then
+                    local sortedHeals = {}
+                    local totalSessionCritsVolume = 0
+                    
+                    for spellName, cr in pairs(data.spellHealCrits) do
+                        local actualCrits = cr.crits or 0
+                        local totalHits = cr.hits or 0
+                        local totalCritHeal = cr.amt or 0
+                        
+                        -- Route spells safely into the display array based on hits or crits volume
+                        if totalHits > 0 or actualCrits > 0 or totalCritHeal > 0 then
+                            --print(spellName, actualCrits, totalCritHeal, totalHits)
+                            table.insert(sortedHeals, { name = spellName, crits = actualCrits, amt = totalCritHeal, hits = totalHits })
+                            totalSessionCritsVolume = totalSessionCritsVolume + actualCrits -- Scale relative to crit count!
+                        end
+                    end
+                    
+                    -- Sort descending by factual crits count, fallback to hits volume
+                    table.sort(sortedHeals, function(a, b) 
+                        if a.crits == b.crits then return a.hits > b.hits end
+                        return a.crits > b.crits 
+                    end)
+                    
+                    if totalSessionCritsVolume == 0 then totalSessionCritsVolume = 1 end
+                    
+                    for i = 1, math.min(10, #sortedHeals) do
+                        local h = sortedHeals[i]
+                        -- FIXED v1.0.0b3: Percentage share is now calculated relative to crits volume instead of 0-amt
+                        local spellCritSharePct = (h.crits / totalSessionCritsVolume) * 100
+                        
+                        local formattedHeal = "0"
+                        if h.amt > 0 then
+                            formattedHeal = FormatDotNumber and FormatDotNumber(h.amt) or h.amt
+                        end
+                        
+                        local rightTextLayout = string.format("%s healing (%d crits / %d hits) (%.1f%%)", formattedHeal, h.crits, h.hits, spellCritSharePct)
+                        GameTooltip:AddDoubleLine(i .. ". " .. h.name, rightTextLayout, 0.8, 0.8, 0.8, 1, 0.82, 0)
+                    end
+                else
+                    GameTooltip:AddLine("No critical healing records found for this session.", 0.6, 0.6, 0.6, true)
+                end
+                GameTooltip:Show()
+                return
             end
 
             -- 3. STANDARD SESSIONS PIPELINE (v0.9.0 Legacy Server-Grafting)
