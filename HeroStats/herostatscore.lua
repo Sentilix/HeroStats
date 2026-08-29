@@ -184,13 +184,21 @@ local function UpdateGroupRosterCache()
     local _, playerClass = UnitClass("player")
     if playerName and playerClass then groupRosterCache[playerName] = playerClass end
     
-    local numGroupMembers = GetNumGroupMembers()
-    if numGroupMembers > 0 then
-        local isRaid = IsInRaid()
-        local prefix = isRaid and "raid" or "party"
-        local loopMax = isRaid and numGroupMembers or (numGroupMembers - 1)
-        for i = 1, loopMax do
-            local unit = prefix .. i
+    -- FIXED v1.0.0b2: Fixed-Width Raid Shield scans all 40 indices to prevent unit nil leaks during layout changes
+    if IsInRaid() then
+        for i = 1, 40 do
+            local unit = "raid" .. i
+            local name = UnitName(unit)
+            if name then
+                local _, classToken = UnitClass(unit)
+                if classToken then groupRosterCache[name] = classToken end
+            end
+        end
+    elseif IsInGroup() then
+        -- Safe standard party mapping for 5-man dungeon groups
+        local numParty = GetNumGroupMembers()
+        for i = 1, (numParty - 1) do
+            local unit = "party" .. i
             local name = UnitName(unit)
             if name then
                 local _, classToken = UnitClass(unit)
@@ -225,6 +233,9 @@ function coreFrame.RefreshStats()
     local topDamageDoneValue = 0
     local topDamageTakenValue = 0
     local topManaGainedValue = 0
+    local topDmgCritValue = 0
+    local topHealCritValue = 0
+    local topOverhealValue = 0
 
     local activeThreshold = HEROSTATS_MANA_THRESHOLD or 300
     if not IsInGroup() then activeThreshold = 0 end
@@ -328,6 +339,8 @@ function coreFrame.RefreshStats()
                     data.damageDone = data.damageDone or 0
                     data.damageTaken = data.damageTaken or 0
                     data.manaGained = data.manaGained or 0
+                    data.dmgCritPct = data.dmgCritPct or 0
+                    data.healCritPct = data.healCritPct or 0
 
                     -- Calculate and track factual HPM yields safely
                     if data.manaUsed > 0 then
@@ -344,6 +357,9 @@ function coreFrame.RefreshStats()
                     if data.damageTaken > topDamageTakenValue then topDamageTakenValue = data.damageTaken end
                     if data.buffs > topBuffsValue then topBuffsValue = data.buffs end
                     if data.manaGained > topManaGainedValue then topManaGainedValue = data.manaGained end
+                    if data.dmgCritPct > topDmgCritValue then topDmgCritValue = data.dmgCritPct end
+                    if data.healCritPct > topHealCritValue then topHealCritValue = data.healCritPct end
+                    if HEALER_CLASSES[data.class] and data.percent > topOverhealValue then topOverhealValue = data.percent end
 
                     -- Inside your data loop right before the "if shouldInclude then" check:
                     -- FIXED v0.10.0: Live calculations for master critical strike percentage yields
@@ -357,9 +373,9 @@ function coreFrame.RefreshStats()
 
                     -- Pure data-driven token filter mapping gates (Expand your existing matrix)
                     local shouldInclude = false
-                    if pageName == "HEALING" then
+                    if pageName == "HEALING_DONE" then
                         if (data.effective or 0) > 0 or (data.overheal or 0) > 0 then shouldInclude = true end
-                    elseif pageName == "OVERHEALING" then
+                    elseif pageName == "EFFICIENCY" then
                         -- FIXED v0.10.0: Restrict Overhealing Efficiency strictly to true healing classes
                         if HEALER_CLASSES[data.class] and ((data.effective or 0) > 0 or (data.overheal or 0) > 0) then 
                             shouldInclude = true 
@@ -446,26 +462,27 @@ function coreFrame.RefreshStats()
         if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, topDamageDoneValue, "DAMAGE_DONE", 0, viewTitle) end
         
     elseif pageName == "DMG_CRIT" then
-        -- Sort descending by damage crit percentage, fallback alphabetically
         table.sort(sortedHealers, function(a, b) return (a.dmgCritPct == b.dmgCritPct) and (a.name < b.name) or (a.dmgCritPct > b.dmgCritPct) end)
-        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, 100, "DMG_CRIT", 0, viewTitle) end
+        local finalMax = (topDmgCritValue > 0) and topDmgCritValue or 100        
+        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, finalMax, "DMG_CRIT", 0, viewTitle) end
 
     elseif pageName == "DAMAGE_TAKEN" then
         table.sort(sortedHealers, function(a, b) return (a.damageTaken == b.damageTaken) and (a.name < b.name) or (a.damageTaken > b.damageTaken) end)
         if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, topDamageTakenValue, "DAMAGE_TAKEN", 0, viewTitle) end
 
-    elseif pageName == "HEALING" then
+    elseif pageName == "HEALING_DONE" then
         table.sort(sortedHealers, function(a, b) return (a.effective == b.effective) and (a.name < b.name) or (a.effective > b.effective) end)
-        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, topHealerAmount, "HEALING", totalRaidEffective, viewTitle) end
+        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, topHealerAmount, "HEALING_DONE", totalRaidEffective, viewTitle) end
         
     elseif pageName == "HEAL_CRIT" then
-        -- Sort descending by healing crit percentage, fallback alphabetically
         table.sort(sortedHealers, function(a, b) return (a.healCritPct == b.healCritPct) and (a.name < b.name) or (a.healCritPct > b.healCritPct) end)
-        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, 100, "HEAL_CRIT", 0, viewTitle) end
+        local finalMax = (topHealCritValue > 0) and topHealCritValue or 100
+        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, finalMax, "HEAL_CRIT", 0, viewTitle) end
 
-    elseif pageName == "OVERHEALING" then
-        table.sort(sortedHealers, function(a, b) return (a.percent == b.percent) and (a.name < b.name) or (a.percent > b.percent) end)       
-        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, 100, "OVERHEALING", 0, viewTitle) end
+    elseif pageName == "EFFICIENCY" then
+        table.sort(sortedHealers, function(a, b) return (a.percent == b.percent) and (a.name < b.name) or (a.percent > b.percent) end)
+        local finalMax = (topOverhealValue > 0) and topOverhealValue or 100
+        if HeroStats_RenderRaidBars then HeroStats_RenderRaidBars(sortedHealers, finalMax, "EFFICIENCY", 0, viewTitle) end
         
     elseif pageName == "MANA_EFF" then
         table.sort(sortedHealers, function(a, b) return (a.hpm == b.hpm) and (a.name < b.name) or (a.hpm > b.hpm) end)
@@ -686,8 +703,9 @@ local activeHealers = nil;
 
 --  SPELL_CAST_SUCCESS - processed both IN and OUT of combat)
 local function OnEvent_SPELL_CAST_SUCCESS(eventType, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags)
-    local _, spellName, _, amount = select(12, CombatLogGetCurrentEventInfo())
-    if not amount then return; end;
+    -- FIXED v1.0.0b3: We only pull spellName here because amount is ALWAYS nil on cast success events
+    local _, spellName = select(12, CombatLogGetCurrentEventInfo())   
+    if not spellName then return end
 
     local cleanSourceName = sourceName and string.match(sourceName, "([^-]+)") or "Unknown"
     local healerClass = groupRosterCache[cleanSourceName]
@@ -703,7 +721,7 @@ local function OnEvent_SPELL_CAST_SUCCESS(eventType, sourceGUID, sourceName, sou
     if isCasterGroupMember and sourceName and spellName then
         local spellID = select(12, CombatLogGetCurrentEventInfo())
         local fullSpellName = spellName
-            
+
         if spellID and C_Spell and C_Spell.GetSpellSubtext then
             local rankText = C_Spell.GetSpellSubtext(spellID)
             if rankText and rankText ~= "" then
@@ -1032,7 +1050,7 @@ local function OnEvent_DAMAGE(eventType, sourceGUID, sourceName, sourceFlags, de
     end;
 end;
 
---  DIRECT HEALS & HOTS (v1.0.0b1 - Upgraded HoT Name-Grafting & Museum Cast Shields)
+--  DIRECT HEALS & HOTS (v1.0.0b1 - Upgraded HoT Name-Grafting & History Cast Shields)
 local function OnEvent_HEAL(eventType, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags)
     local spellID, spellName = select(12, CombatLogGetCurrentEventInfo())
     local _, _, _, amount, overheal = select(12, CombatLogGetCurrentEventInfo())
@@ -1514,6 +1532,7 @@ end;
 
 --  DETECT COMPACT AURA PROCS (v0.8.0 - Tier 3 Epiphany Engine Secured)
 local function OnEvent_AURA(eventType, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags)
+
     if destGUID == playerGUID then
         local _, buffName = select(12, CombatLogGetCurrentEventInfo())
         
@@ -1882,10 +1901,10 @@ function HeroStats_ReportCurrentPageToChat()
             local lineMessage = ""
             
             -- Pure data-driven token mapping for perfect chat reports
-            if pageName == "HEALING" then
+            if pageName == "HEALING_DONE" then
                 local formattedAmt = FormatDotNumber and FormatDotNumber(data.effective) or data.effective
                 lineMessage = string.format("%d. %s - %s Effective Healing", i, data.name, formattedAmt)
-            elseif pageName == "OVERHEALING" then
+            elseif pageName == "EFFICIENCY" then
                 lineMessage = string.format("%d. %s - %.1f%% Healing Efficiency", i, data.name, data.percent)
             elseif pageName == "MANA_EFF" then
                 lineMessage = string.format("%d. %s - %.1f HPM", i, data.name, data.hpm)
@@ -1917,6 +1936,32 @@ function HeroStats_ReportCurrentPageToChat()
             end
         end
     end
+end
+
+-- FIXED v1.0.0b3: Central Unit Aura Registration Hook
+-- COMMENT: Registers the critical Blizzard aura update event directly to your custom focus frame
+if FokusEraFrame then
+    FokusEraFrame:RegisterEvent("UNIT_AURA")
+    
+    -- Dynamically hook into your frame's existing event processor cleanly
+    local originalOnEvent = FokusEraFrame:GetScript("OnEvent")
+    FokusEraFrame:SetScript("OnEvent", function(self, event, unit, ...)
+        if event == "UNIT_AURA" then
+            -- ERA COMPATIBILITY INTERCEPTOR: Since 'focus' unit doesn't exist natively,
+            -- we check if the updated unit token matches the player name string we are currently tracking!
+            if unit and UnitName(unit) == lastActiveFocusName then
+                -- TRIGGER REFRESH: Invoke your addon's own master update function here!
+                if FokusEra_UpdateAuras then
+                    FokusEra_UpdateAuras()
+                elseif FokusEra_UpdateFrame then
+                    FokusEra_UpdateFrame()
+                end
+            end
+        elseif originalOnEvent then
+            -- Fallback safely to your addon's original event routing pipeline
+            originalOnEvent(self, event, unit, ...)
+        end
+    end)
 end
 
 -- FIXED v0.10.0: Global API bridge to retrieve the local frame object securely

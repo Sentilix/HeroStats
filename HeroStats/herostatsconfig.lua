@@ -253,7 +253,7 @@ configLoader:SetScript("OnEvent", function(self, event, addonName)
             if not HeroStatsSettings.groupJoinBehavior then HeroStatsSettings.groupJoinBehavior = 3 end
             if not HeroStatsSettings.personalDamageRecords then HeroStatsSettings.personalDamageRecords = {} end
             if not HeroStatsSettings.personalHealingRecords then HeroStatsSettings.personalHealingRecords = {} end
-            if not HeroStatsSettings.recordNotifyMode then HeroStatsSettings.recordNotifyMode = 2 end
+            if not HeroStatsSettings.recordNotifyMode then HeroStatsSettings.recordNotifyMode = 3 end
 
             slider:SetValue(HeroStatsSettings.maxSessionsLimit)
             HEROSTATS_MAX_SAVED_SESSIONS = HeroStatsSettings.maxSessionsLimit

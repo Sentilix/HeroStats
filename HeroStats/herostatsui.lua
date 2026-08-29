@@ -142,61 +142,83 @@ local function CreateDropdownTextItem(labelText, index, onClickFunc)
     return itemFrame
 end
 
+-- FIXED v1.0.0b3: Advanced Symmetrical Ingress Router for both Page Overviews and Detailed Bar Invocations
+local function CentralChannelExecutionRouter(targetChannel)
+    if not currentViewTypeRef or not currentBarDataRef then return end
+    
+    -- STEP 1: Route lifetime record structures cleanly
+    if currentViewTypeRef == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
+        HeroStats_Report_PersonalDamage(currentBarDataRef, targetChannel)
+    elseif currentViewTypeRef == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
+        HeroStats_Report_PersonalHealing(currentBarDataRef, targetChannel)
+
+        -- STEP 2: Universal Detailed Bar Ingress Tracker (Triggers cleanly whenever a single player row is right-clicked)
+        -- FIXED v1.0.0b3: Class-Validation Shield prevents full session tables from accidentally masquerading as single player rows
+    elseif type(currentBarDataRef) == "table" and currentBarDataRef.class then
+        if currentViewTypeRef == "DAMAGE_DONE" and HeroStats_Report_DamageDone then
+            HeroStats_Report_DamageDone(currentBarDataRef, targetChannel, false, nil, currentDurationRef or 1)
+        elseif currentViewTypeRef == "HEALING_DONE" and HeroStats_Report_HealingDone then
+            HeroStats_Report_HealingDone(currentBarDataRef, targetChannel, false, nil, currentDurationRef or 1)
+        elseif currentViewTypeRef == "DMG_CRIT" and HeroStats_Report_DamageCrits then
+            HeroStats_Report_DamageCrits(currentBarDataRef, targetChannel, false, nil)
+        elseif currentViewTypeRef == "HEAL_CRIT" and HeroStats_Report_HealingCrits then
+            HeroStats_Report_HealingCrits(currentBarDataRef, targetChannel, false, nil)            
+        -- Enforces your crisp global unified naming convention perfectly
+        elseif currentViewTypeRef == "DAMAGE_TAKEN" and HeroStats_Report_DamageTaken then
+            HeroStats_Report_DamageTaken(currentBarDataRef, targetChannel, false, nil, currentDurationRef or 1)            
+        elseif currentViewTypeRef == "EFFICIENCY" and HeroStats_Report_Efficiency then
+            HeroStats_Report_Efficiency(currentBarDataRef, targetChannel, false, nil)
+        elseif currentViewTypeRef == "MANA_EFF" and HeroStats_Report_ManaEff then
+            HeroStats_Report_ManaEff(currentBarDataRef, targetChannel, false, nil)
+        elseif currentViewTypeRef == "MANA_GAINED" and HeroStats_Report_ManaGained then
+            HeroStats_Report_ManaGained(currentBarDataRef, targetChannel, false, nil)
+        elseif currentViewTypeRef == "DISPELS" and HeroStats_Report_Dispels then
+            HeroStats_Report_Dispels(currentBarDataRef, targetChannel, false, nil)
+        elseif currentViewTypeRef == "BUFFS" and HeroStats_Report_Buffs then
+            HeroStats_Report_Buffs(currentBarDataRef, targetChannel, false, nil)
+        elseif currentViewTypeRef == "DEATHS" and HeroStats_Report_Deaths then
+            HeroStats_Report_Deaths(currentBarDataRef, targetChannel, false, nil)
+        elseif currentViewTypeRef == "RESURRECTS" and HeroStats_Report_Resurrects then
+            HeroStats_Report_Resurrects(currentBarDataRef, targetChannel, false, nil)
+        end
+
+    -- STEP 3: Fallback cleanly to standard full page active summaries
+    elseif HeroStats_Report_ActivePageOverview then
+        -- Din sladrehank herinde for at fejre den sande oversigts-sluse:
+        print("LANDED CLEANLY IN OVERVIEW!")
+        HeroStats_Report_ActivePageOverview(currentBarDataRef, currentViewTypeRef, currentDurationRef, targetChannel)
+    end
+end
+
 -- Line 1: Report to Guild Chat
 CreateDropdownTextItem("Report to Guild Chat", 0, function()
     reportFrame:Hide()
-    if currentViewTypeRef == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
-        HeroStats_Report_PersonalDamage(currentBarDataRef, "GUILD")
-    elseif currentViewTypeRef == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
-        HeroStats_Report_PersonalHealing(currentBarDataRef, "GUILD")
-    elseif HeroStats_Report_ActivePageOverview then
-        HeroStats_Report_ActivePageOverview(currentBarDataRef, currentViewTypeRef, currentDurationRef, "GUILD")
-    end
+    CentralChannelExecutionRouter("GUILD")
 end)
 
 -- Line 2: Report to Instance (Raid/Party)
 CreateDropdownTextItem("Report to Instance (Raid/Party)", 1, function()
     reportFrame:Hide()
     local instanceChannel = IsInRaid() and "RAID" or (IsInGroup() and "PARTY" or "LOCAL")
-    if currentViewTypeRef == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
-        HeroStats_Report_PersonalDamage(currentBarDataRef, instanceChannel)
-    elseif currentViewTypeRef == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
-        HeroStats_Report_PersonalHealing(currentBarDataRef, instanceChannel)
-    elseif HeroStats_Report_ActivePageOverview then
-        HeroStats_Report_ActivePageOverview(currentBarDataRef, currentViewTypeRef, currentDurationRef, instanceChannel)
-    end
+    CentralChannelExecutionRouter(instanceChannel)
 end)
 
 -- Line 3: Report to Say (Local Zone)
 CreateDropdownTextItem("Report to Say (Local Zone)", 2, function()
     reportFrame:Hide()
-    if currentViewTypeRef == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
-        HeroStats_Report_PersonalDamage(currentBarDataRef, "SAY")
-    elseif currentViewTypeRef == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
-        HeroStats_Report_PersonalHealing(currentBarDataRef, "SAY")
-    elseif HeroStats_Report_ActivePageOverview then
-        HeroStats_Report_ActivePageOverview(currentBarDataRef, currentViewTypeRef, currentDurationRef, "SAY")
-    end
+    CentralChannelExecutionRouter("SAY")
 end)
 
 -- Line 4: Whisper Player...
 CreateDropdownTextItem("Whisper Player...", 3, function()
     reportFrame:Hide()
-    -- Directly invokes your sterile Whisper target input popup dialog frame cleanly
     StaticPopup_Show("HEROSTATS_REPORT_WHISPER_INPUT", nil, nil, { data = currentBarDataRef, viewType = currentViewTypeRef, duration = currentDurationRef })
 end)
 
--- Line 5: NEW FIXED v1.0.0b2: Local Chat Output (Replaces the bugged Custom Channel option)
--- COMMENT: Enforces routing straight into the sterile "LOCAL" chat printer bucket to secure copy-paste operations
-CreateDropdownTextItem("Report to Local Chat", 4, function()
+-- Line 5: Report to Local chat
+CreateDropdownTextItem("Report to Local chat", 4, function()
     reportFrame:Hide()
-    if currentViewTypeRef == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
-        HeroStats_Report_PersonalDamage(currentBarDataRef, "LOCAL")
-    elseif currentViewTypeRef == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
-        HeroStats_Report_PersonalHealing(currentBarDataRef, "LOCAL")
-    elseif HeroStats_Report_ActivePageOverview then
-        HeroStats_Report_ActivePageOverview(currentBarDataRef, currentViewTypeRef, currentDurationRef, "LOCAL")
-    end
+    CentralChannelExecutionRouter("LOCAL") -- Now triggers Step 2 perfectly and routes straight to HeroStats_Print!
 end)
 
 -- Line 6: Cancel
@@ -421,10 +443,6 @@ shoutButton:SetScript("OnClick", function(self)
     local pageRecord = HeroStats_GetPageRecord and HeroStats_GetPageRecord(HeroStats_CurrentActivePage)
     local clickedViewType = pageRecord and pageRecord.name or "DAMAGE_DONE"
     
-    -- Symmetry calibration: Synchronize view mapping token names cleanly for overview data loops
-    if clickedViewType == "HEALING_DONE" then clickedViewType = "HEALING" end
-    if clickedViewType == "EFFICIENCY" then clickedViewType = "OVERHEALING" end
-
     -- 2. Advanced Data Router selects combat fight session block vs lifetime museum tracking arrays
     local activeSessionData = nil
     if clickedViewType == "PERSONAL_DMG_RECORDS" then
@@ -498,61 +516,94 @@ StaticPopupDialogs["HEROSTATS_REPORT_WHISPER_INPUT"] = {
     button1 = "Send Whisper",
     button2 = "Cancel",
     hasEditBox = true,
-    maxLetters = 12,
+    maxLetters = 48,
     OnAccept = function(self, data)
         -- FIXED v1.0.0b1: Enforces precise global lookup dictionary targeting to prevent nil case-sensitivity crashes
         local editBoxObj = _G[self:GetName() .. "EditBox"] or self.EditBox or self.editBox
         local targetPlayer = editBoxObj and editBoxObj:GetText()
         
         if targetPlayer and targetPlayer ~= "" and data then
-            local viewType = data.viewType
-            local barData = data.data
-            local duration = data.duration
+            -- FIXED v1.0.0b2: Smart Cross-Realm Autocomplete Shield with Open Non-Raid Fallback
+            local hasRealmSeparator = string.find(targetPlayer, "-")
+            
+            if not hasRealmSeparator then
+                local searchNameLower = string.lower(targetPlayer)
+                local matchFound = false
+                
+                -- STEP 1: Verify if the input matches your own local player name first
+                local pName, pRealm = UnitName("player")
+                if pName and string.lower(pName) == searchNameLower then
+                    if pRealm and pRealm ~= "" then
+                        targetPlayer = pName .. "-" .. string.gsub(pRealm, "%s+", "")
+                    else
+                        targetPlayer = pName
+                    end
+                    matchFound = true
+                end
+                
+                -- STEP 2: Scan the raid group ONLY if no local player match occurred
+                if not matchFound then
+                    for i = 1, 40 do
+                        local unitToken = "raid" .. i
+                        if UnitExists(unitToken) then
+                            local name, realm = UnitName(unitToken)
+                            if name and string.lower(name) == searchNameLower then
+                                if realm and realm ~= "" then
+                                    targetPlayer = name .. "-" .. string.gsub(realm, "%s+", "")
+                                else
+                                    targetPlayer = name
+                                end
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- FIXED v1.0.0b2: PERSISTENT SCOPE SHIELD (Locks values safely into fresh independent variables)
+            -- COMMENT: Prevents the garbage collector from wiping out 'data' references during the frame transition
+            local savedViewType = data.viewType
+            local savedBarData = data.data
+            local savedDuration = data.duration
 
             -- FIXED v1.0.0b2: Asynchronous Timer Breakout completely eliminates Blizzard StaticPopup UI Taint!
-            -- COMMENT: Delays execution by 0 seconds to escape Blizzard's protected code frame before calling SendChatMessage
             C_Timer.After(0, function()
-                -- CENTRAL LOGIC INGRESS: All 14 pages are safely mapped in a 100% taint-clean asynchronous environment
-                if viewType == "DAMAGE_DONE" and HeroStats_Report_DamageDone then
-                    HeroStats_Report_DamageDone(barData, "WHISPER", false, targetPlayer, duration)
-                elseif viewType == "HEALING_DONE" and HeroStats_Report_HealingDone then
-                    HeroStats_Report_HealingDone(barData, "WHISPER", false, targetPlayer, duration)
-                elseif viewType == "DMG_CRIT" and HeroStats_Report_DamageCrits then
-                    HeroStats_Report_DamageCrits(barData, "WHISPER", false, targetPlayer)
-                elseif viewType == "HEAL_CRIT" and HeroStats_Report_HealingCrits then
-                    HeroStats_Report_HealingCrits(barData, "WHISPER", false, targetPlayer)
-                elseif viewType == "DMG_TAKEN" and HeroStats_Report_DamageTaken then
-                    HeroStats_Report_DamageTaken(barData, "WHISPER", false, targetPlayer, duration)
-                elseif viewType == "EFFICIENCY" and HeroStats_Report_Efficiency then
-                    HeroStats_Report_Efficiency(barData, "WHISPER", false, targetPlayer)
-                elseif viewType == "MANA_EFF" and HeroStats_Report_ManaEff then
-                    HeroStats_Report_ManaEff(barData, "WHISPER", false, targetPlayer)
-                elseif viewType == "MANA_GAINED" and HeroStats_Report_ManaGained then
-                    HeroStats_Report_ManaGained(barData, "WHISPER", false, targetPlayer)
-                elseif viewType == "DISPELS" and HeroStats_Report_Dispels then
-                    HeroStats_Report_Dispels(barData, "WHISPER", false, targetPlayer)
-                elseif viewType == "BUFFS" and HeroStats_Report_Buffs then
-                    HeroStats_Report_Buffs(barData, "WHISPER", false, targetPlayer)
-                elseif viewType == "DEATHS" and HeroStats_Report_Deaths then
-                    HeroStats_Report_Deaths(barData, "WHISPER", false, targetPlayer)
-                elseif viewType == "RESURRECTS" and HeroStats_Report_Resurrects then
-                    HeroStats_Report_Resurrects(barData, "WHISPER", false, targetPlayer)
-                elseif viewType == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
-                    HeroStats_Report_PersonalDamage(barData, "WHISPER", false, targetPlayer)
-                elseif viewType == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
-                    HeroStats_Report_PersonalHealing(barData, "WHISPER", false, targetPlayer)
+                -- CENTRAL LOGIC INGRESS: Symmetrical viewType router handles both shortened and full configuration tokens safely
+                if savedViewType == "DAMAGE_DONE" and HeroStats_Report_DamageDone then
+                    HeroStats_Report_DamageDone(savedBarData, "WHISPER", false, targetPlayer, savedDuration)
+                elseif savedViewType == "HEALING_DONE" and HeroStats_Report_HealingDone then
+                    HeroStats_Report_HealingDone(savedBarData, "WHISPER", false, targetPlayer, savedDuration)
+                elseif savedViewType == "DMG_CRIT" and HeroStats_Report_DamageCrits then
+                    HeroStats_Report_DamageCrits(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "HEAL_CRIT" and HeroStats_Report_HealingCrits then
+                    HeroStats_Report_HealingCrits(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "DAMAGE_TAKEN" and HeroStats_Report_DamageTaken then
+                    HeroStats_Report_DamageTaken(savedBarData, "WHISPER", false, targetPlayer, savedDuration)
+                elseif savedViewType == "EFFICIENCY" and HeroStats_Report_Efficiency then
+                    HeroStats_Report_Efficiency(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "MANA_EFF" and HeroStats_Report_ManaEff then
+                    HeroStats_Report_ManaEff(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "MANA_GAINED" and HeroStats_Report_ManaGained then
+                    HeroStats_Report_ManaGained(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "DISPELS" and HeroStats_Report_Dispels then
+                    HeroStats_Report_Dispels(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "BUFFS" and HeroStats_Report_Buffs then
+                    HeroStats_Report_Buffs(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "DEATHS" and HeroStats_Report_Deaths then
+                    HeroStats_Report_Deaths(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "RESURRECTS" and HeroStats_Report_Resurrects then
+                    HeroStats_Report_Resurrects(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
+                    HeroStats_Report_PersonalDamage(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
+                    HeroStats_Report_PersonalHealing(savedBarData, "WHISPER", false, targetPlayer)
                 end
             end)
         end
     end,
+    -- Inside StaticPopupDialogs["HEROSTATS_REPORT_WHISPER_INPUT"]:
     EditBoxOnEnterPressed = function(self)
-        local parent = self:GetParent()
-        if parent and parent.button1 and parent.button1.Click then
-            -- Bypasses code duplication completely by firing the OnAccept script logic natively
-            parent.button1:Click()
-        else
-            parent:Hide()
-        end
+        self:ClearFocus()
     end,
     timeout = 0,
     whileDead = true,
@@ -580,47 +631,44 @@ StaticPopupDialogs["HEROSTATS_REPORT_CHANNEL_INPUT"] = {
 
             -- FIXED v1.0.0b2: Asynchronous Timer Breakout completely eliminates Blizzard StaticPopup UI Taint!
             C_Timer.After(0, function()
-                -- CENTRAL LOGIC INGRESS: All 14 pages are mapped exclusively in this single channel block
-                if viewType == "DAMAGE_DONE" and HeroStats_Report_DamageDone then
-                    HeroStats_Report_DamageDone(barData, "CHANNEL", true, channelNum, duration)
-                elseif viewType == "HEALING_DONE" and HeroStats_Report_HealingDone then
-                    HeroStats_Report_HealingDone(barData, "CHANNEL", true, channelNum, duration)
-                elseif viewType == "DMG_CRIT" and HeroStats_Report_DamageCrits then
-                    HeroStats_Report_DamageCrits(barData, "CHANNEL", true, channelNum)
-                elseif viewType == "HEAL_CRIT" and HeroStats_Report_HealingCrits then
-                    HeroStats_Report_HealingCrits(barData, "CHANNEL", true, channelNum)
-                elseif viewType == "DMG_TAKEN" and HeroStats_Report_DamageTaken then
-                    HeroStats_Report_DamageTaken(barData, "CHANNEL", true, channelNum, duration)
-                elseif viewType == "EFFICIENCY" and HeroStats_Report_Efficiency then
-                    HeroStats_Report_Efficiency(barData, "CHANNEL", true, channelNum)
-                elseif viewType == "MANA_EFF" and HeroStats_Report_ManaEff then
-                    HeroStats_Report_ManaEff(barData, "CHANNEL", true, channelNum)
-                elseif viewType == "MANA_GAINED" and HeroStats_Report_ManaGained then
-                    HeroStats_Report_ManaGained(barData, "CHANNEL", true, channelNum)
-                elseif viewType == "DISPELS" and HeroStats_Report_Dispels then
-                    HeroStats_Report_Dispels(barData, "CHANNEL", true, channelNum)
-                elseif viewType == "BUFFS" and HeroStats_Report_Buffs then
-                    HeroStats_Report_Buffs(barData, "CHANNEL", true, channelNum)
-                elseif viewType == "DEATHS" and HeroStats_Report_Deaths then
-                    HeroStats_Report_Deaths(barData, "CHANNEL", true, channelNum)
-                elseif viewType == "RESURRECTS" and HeroStats_Report_Resurrects then
-                    HeroStats_Report_Resurrects(barData, "CHANNEL", true, channelNum)
-                elseif viewType == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
-                    HeroStats_Report_PersonalDamage(barData, "CHANNEL", true, channelNum)
-                elseif viewType == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
-                    HeroStats_Report_PersonalHealing(barData, "CHANNEL", true, channelNum)
+                -- CENTRAL LOGIC INGRESS: Symmetrical viewType router handles both shortened and full configuration tokens safely
+                if savedViewType == "DAMAGE_DONE" and HeroStats_Report_DamageDone then
+                    HeroStats_Report_DamageDone(savedBarData, "WHISPER", false, targetPlayer, savedDuration)
+                elseif savedViewType == "HEALING_DONE" and HeroStats_Report_HealingDone then
+                    HeroStats_Report_HealingDone(savedBarData, "WHISPER", false, targetPlayer, savedDuration)
+                elseif savedViewType == "DMG_CRIT" and HeroStats_Report_DamageCrits then
+                    HeroStats_Report_DamageCrits(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "HEAL_CRIT" and HeroStats_Report_HealingCrits then
+                    HeroStats_Report_HealingCrits(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "DAMAGE_TAKEN" and HeroStats_Report_DamageTaken then
+                    HeroStats_Report_DamageTaken(savedBarData, "WHISPER", false, targetPlayer, savedDuration)
+                elseif savedViewType == "EFFICIENCY" and HeroStats_Report_Efficiency then
+                    HeroStats_Report_Efficiency(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "MANA_EFF" and HeroStats_Report_ManaEff then
+                    HeroStats_Report_ManaEff(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "MANA_GAINED" and HeroStats_Report_ManaGained then
+                    HeroStats_Report_ManaGained(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "DISPELS" and HeroStats_Report_Dispels then
+                    HeroStats_Report_Dispels(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "BUFFS" and HeroStats_Report_Buffs then
+                    HeroStats_Report_Buffs(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "DEATHS" and HeroStats_Report_Deaths then
+                    HeroStats_Report_Deaths(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "RESURRECTS" and HeroStats_Report_Resurrects then
+                    HeroStats_Report_Resurrects(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "PERSONAL_DMG_RECORDS" and HeroStats_Report_PersonalDamage then
+                    HeroStats_Report_PersonalDamage(savedBarData, "WHISPER", false, targetPlayer)
+                elseif savedViewType == "PERSONAL_HEAL_RECORDS" and HeroStats_Report_PersonalHealing then
+                    HeroStats_Report_PersonalHealing(savedBarData, "WHISPER", false, targetPlayer)
                 end
             end)
         end
     end,
+    -- Inside StaticPopupDialogs["HEROSTATS_REPORT_CHANNEL_INPUT"]:
     EditBoxOnEnterPressed = function(self)
-        local parent = self:GetParent()
-        if parent and parent.button1 and parent.button1.Click then
-            -- Bypasses code duplication completely by firing the OnAccept script logic natively
-            parent.button1:Click()
-        else
-            parent:Hide()
-        end
+        -- FIXED v1.0.0b2: ClearFocus shield keeps the popup frame open on Enter instead of closing it!
+        -- COMMENT: Prevents Blizzard's engine from auto-hiding the dialog before the user clicks Send Whisper
+        self:ClearFocus()
     end,
     timeout = 0,
     whileDead = true,
@@ -858,11 +906,11 @@ function HeroStats_RenderRaidBars(sortedData, maxVal, viewType, totalRaidEffecti
         -- FIXED v0.8.0: Token names changed from old short versions to your new full matrix tokens
         local fillValue = 0
 
-        if viewType == "HEALING" then
+        if viewType == "HEALING_DONE" then
             fillValue = (maxVal > 0) and ((data.effective / maxVal) * 100) or 0
         elseif viewType == "HEAL_CRIT" then
             fillValue = (maxVal > 0) and ((data.healCritPct / maxVal) * 100) or 0
-        elseif viewType == "OVERHEALING" then
+        elseif viewType == "EFFICIENCY" then
             fillValue = data.percent or 0
         elseif viewType == "MANA_EFF" then
             fillValue = (maxVal > 0) and ((data.hpm / maxVal) * 100) or 0            
@@ -897,7 +945,7 @@ function HeroStats_RenderRaidBars(sortedData, maxVal, viewType, totalRaidEffecti
         headerText:SetText(viewTitle or "HeroStats")
 
         -- FIXED v0.8.0: Text tokens are now 100% synchronized with your core sorted views!
-        if viewType == "HEALING" then
+        if viewType == "HEALING_DONE" then
             local currentTotalRaid = totalRaidEffective or 1
             if currentTotalRaid == 0 then currentTotalRaid = 1 end
             local raidSharePercent = (data.effective / currentTotalRaid) * 100
@@ -906,7 +954,7 @@ function HeroStats_RenderRaidBars(sortedData, maxVal, viewType, totalRaidEffecti
             bar.rightText:SetText(string.format("%s (%.0f HPS) - %.1f%%", formattedAmt, hps, raidSharePercent))            
         elseif viewType == "HEAL_CRIT" then
             bar.rightText:SetText(string.format("%.1f%% Crit", data.healCritPct or 0))
-        elseif viewType == "OVERHEALING" then
+        elseif viewType == "EFFICIENCY" then
             bar.rightText:SetText(string.format("%.1f%% Efficiency", data.percent or 0))
         elseif viewType == "MANA_EFF" then
             bar.rightText:SetText(string.format("%.1f HPM", data.hpm or 0))
@@ -1015,58 +1063,79 @@ function HeroStats_RenderRaidBars(sortedData, maxVal, viewType, totalRaidEffecti
             GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
             GameTooltip:ClearLines()
 
-            if pageName == "DMG_CRIT" or pageName == "HEAL_CRIT" then
-                local titleText = (pageName == "DMG_CRIT") and "Top Critical Damage Abilities:" or "Top Critical Healing Abilities:"
-                GameTooltip:AddLine(titleText, 1, 1, 1)
-                
-                if pageName == "DMG_CRIT" then
-                    if data.spellCrits and next(data.spellCrits) ~= nil then
-                        local sortedSpells = {}
-                        local totalSessionCritDmg = 0
-                        for spellName, cr in pairs(data.spellCrits) do
-                            local totalCritDmg = cr.dmg or 0
-                            if totalCritDmg > 0 then
-                                table.insert(sortedSpells, { name = spellName, crits = cr.crits or 0, dmg = totalCritDmg })
-                                totalSessionCritDmg = totalSessionCritDmg + totalCritDmg
-                            end
+            -- FIXED v1.0.0b3: ISOLATED DAMAGE CRITS TOOLTIP PIPELINE
+            if pageName == "DMG_CRIT" then
+                GameTooltip:AddLine("Top Critical Damage Abilities:", 1, 1, 1)
+                if data.spellCrits and next(data.spellCrits) ~= nil then
+                    local sortedSpells = {}
+                    local totalSessionCritDmg = 0
+                    for spellName, cr in pairs(data.spellCrits) do
+                        local totalCritDmg = cr.dmg or 0
+                        if totalCritDmg > 0 then
+                            table.insert(sortedSpells, { name = spellName, crits = cr.crits or 0, dmg = totalCritDmg })
+                            totalSessionCritDmg = totalSessionCritDmg + totalCritDmg
                         end
-                        table.sort(sortedSpells, function(a, b) return a.dmg > b.dmg end)
-                        if totalSessionCritDmg == 0 then totalSessionCritDmg = 1 end
-                        for i = 1, math.min(10, #sortedSpells) do
-                            local s = sortedSpells[i]
-                            local spellCritSharePct = (s.dmg / totalSessionCritDmg) * 100
-                            local formattedDmg = FormatDotNumber and FormatDotNumber(s.dmg) or s.dmg
-                            GameTooltip:AddDoubleLine(i .. ". " .. s.name, string.format("%s (%d crits) (%.1f%%)", formattedDmg, s.crits, spellCritSharePct), 0.8, 0.8, 0.8, 1, 0.82, 0)
-                        end
-                    else
-                        GameTooltip:AddLine("No critical damage records found for this session.", 0.6, 0.6, 0.6, true)
                     end
-                elseif pageName == "HEAL_CRIT" then
-                    if data.spellHealCrits and next(data.spellHealCrits) ~= nil then
-                        local sortedHeals = {}
-                        local totalSessionCritHeal = 0
-                        for spellName, cr in pairs(data.spellHealCrits) do
-                            local totalCritHeal = cr.amt or 0
-                            if totalCritHeal > 0 then
-                                table.insert(sortedHeals, { name = spellName, crits = cr.crits or 0, amt = totalCritHeal })
-                                totalSessionCritHeal = totalSessionCritHeal + totalCritHeal
-                            end
-                        end
-                        table.sort(sortedHeals, function(a, b) return a.amt > b.amt end)
-                        if totalSessionCritHeal == 0 then totalSessionCritHeal = 1 end
-                        for i = 1, math.min(10, #sortedHeals) do
-                            local h = sortedHeals[i]
-                            local spellCritSharePct = (h.amt / totalSessionCritHeal) * 100
-                            local formattedHeal = FormatDotNumber and FormatDotNumber(h.amt) or h.amt
-                            GameTooltip:AddDoubleLine(i .. ". " .. h.name, string.format("%s (%d crits) (%.1f%%)", formattedHeal, h.crits, spellCritSharePct), 0.8, 0.8, 0.8, 1, 0.82, 0)
-                        end
-                    else
-                        GameTooltip:AddLine("No critical healing records found for this session.", 0.6, 0.6, 0.6, true)
+                    table.sort(sortedSpells, function(a, b) return a.dmg > b.dmg end)
+                    if totalSessionCritDmg == 0 then totalSessionCritDmg = 1 end
+                    for i = 1, math.min(10, #sortedSpells) do
+                        local s = sortedSpells[i]
+                        local spellCritSharePct = (s.dmg / totalSessionCritDmg) * 100
+                        local formattedDmg = FormatDotNumber and FormatDotNumber(s.dmg) or s.dmg
+                        GameTooltip:AddDoubleLine(i .. ". " .. s.name, string.format("%s (%d crits) (%.1f%%)", formattedDmg, s.crits, spellCritSharePct), 0.8, 0.8, 0.8, 1, 0.82, 0)
                     end
+                else
+                    GameTooltip:AddLine("No critical damage records found for this session.", 0.6, 0.6, 0.6, true)
                 end
-                
                 GameTooltip:Show()
-                return -- Ironclad exit pathway blocks the legacy session modules below completely!
+                return
+            end
+
+            if pageName == "HEAL_CRIT" then
+                GameTooltip:AddLine("Top Critical Healing Abilities:", 1, 1, 1)
+                if data.spellHealCrits and next(data.spellHealCrits) ~= nil then
+                    local sortedHeals = {}
+                    local totalSessionCritsVolume = 0
+                    
+                    for spellName, cr in pairs(data.spellHealCrits) do
+                        local actualCrits = cr.crits or 0
+                        local totalHits = cr.hits or 0
+                        local totalCritHeal = cr.amt or 0
+                        
+                        -- Route spells safely into the display array based on hits or crits volume
+                        if totalHits > 0 or actualCrits > 0 or totalCritHeal > 0 then
+                            --print(spellName, actualCrits, totalCritHeal, totalHits)
+                            table.insert(sortedHeals, { name = spellName, crits = actualCrits, amt = totalCritHeal, hits = totalHits })
+                            totalSessionCritsVolume = totalSessionCritsVolume + actualCrits -- Scale relative to crit count!
+                        end
+                    end
+                    
+                    -- Sort descending by factual crits count, fallback to hits volume
+                    table.sort(sortedHeals, function(a, b) 
+                        if a.crits == b.crits then return a.hits > b.hits end
+                        return a.crits > b.crits 
+                    end)
+                    
+                    if totalSessionCritsVolume == 0 then totalSessionCritsVolume = 1 end
+                    
+                    for i = 1, math.min(10, #sortedHeals) do
+                        local h = sortedHeals[i]
+                        -- FIXED v1.0.0b3: Percentage share is now calculated relative to crits volume instead of 0-amt
+                        local spellCritSharePct = (h.crits / totalSessionCritsVolume) * 100
+                        
+                        local formattedHeal = "0"
+                        if h.amt > 0 then
+                            formattedHeal = FormatDotNumber and FormatDotNumber(h.amt) or h.amt
+                        end
+                        
+                        local rightTextLayout = string.format("%s healing (%d crits / %d hits) (%.1f%%)", formattedHeal, h.crits, h.hits, spellCritSharePct)
+                        GameTooltip:AddDoubleLine(i .. ". " .. h.name, rightTextLayout, 0.8, 0.8, 0.8, 1, 0.82, 0)
+                    end
+                else
+                    GameTooltip:AddLine("No critical healing records found for this session.", 0.6, 0.6, 0.6, true)
+                end
+                GameTooltip:Show()
+                return
             end
 
             -- 3. STANDARD SESSIONS PIPELINE (v0.9.0 Legacy Server-Grafting)
@@ -1111,7 +1180,7 @@ function HeroStats_RenderRaidBars(sortedData, maxVal, viewType, totalRaidEffecti
             local fightSeconds = HeroStats_CurrentFightDuration_RenderOverride or HeroStats_CurrentFightDuration or 1
             if fightSeconds < 1 then fightSeconds = 1 end
 
-            if pageName == "HEALING" or pageName == "OVERHEALING" then
+            if pageName == "HEALING_DONE" or pageName == "EFFICIENCY" then
                 GameTooltip:AddLine("Top Healing Abilities:", 1, 1, 1)
                 if data.spellHeals then
                     local sortedSpells = {}
@@ -1123,7 +1192,7 @@ function HeroStats_RenderRaidBars(sortedData, maxVal, viewType, totalRaidEffecti
                     for i = 1, #sortedSpells do
                         if lineCount > 10 then break end
                         local s = sortedSpells[i]
-                        if pageName == "HEALING" then
+                        if pageName == "HEALING_DONE" then
                             if s.eff > 0 then
                                 local personalSharePct = (data.effective > 0) and ((s.eff / data.effective) * 100) or 0
                                 local formattedAmt = FormatDotNumber and FormatDotNumber(s.eff) or s.eff
