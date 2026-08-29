@@ -703,8 +703,9 @@ local activeHealers = nil;
 
 --  SPELL_CAST_SUCCESS - processed both IN and OUT of combat)
 local function OnEvent_SPELL_CAST_SUCCESS(eventType, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags)
-    local _, spellName, _, amount = select(12, CombatLogGetCurrentEventInfo())
-    if not amount then return; end;
+    -- FIXED v1.0.0b3: We only pull spellName here because amount is ALWAYS nil on cast success events
+    local _, spellName = select(12, CombatLogGetCurrentEventInfo())   
+    if not spellName then return end
 
     local cleanSourceName = sourceName and string.match(sourceName, "([^-]+)") or "Unknown"
     local healerClass = groupRosterCache[cleanSourceName]
@@ -720,7 +721,7 @@ local function OnEvent_SPELL_CAST_SUCCESS(eventType, sourceGUID, sourceName, sou
     if isCasterGroupMember and sourceName and spellName then
         local spellID = select(12, CombatLogGetCurrentEventInfo())
         local fullSpellName = spellName
-            
+
         if spellID and C_Spell and C_Spell.GetSpellSubtext then
             local rankText = C_Spell.GetSpellSubtext(spellID)
             if rankText and rankText ~= "" then
