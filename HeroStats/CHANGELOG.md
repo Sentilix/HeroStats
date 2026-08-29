@@ -1,3 +1,21 @@
+# Changelog - HeroStats v1.0.0b3
+
+## Added
+* New report dropdown menu that never causes combat taints or UI blocks.
+* Option to print detailed player breakdowns straight to your own Local Chat window.
+* Cross-realm autocomplete for the Whisper dialog.
+
+## Fixed
+* Fixed non-healing classes and random procs polluting the healing/crit meters.
+* Fixed Hunter "Feign Death" accidentally counting as a real death on the meter.
+* Fixed empty tooltips and missing spells on the Crits and Mana Efficiency pages.
+* Fixed flat-looking bars on Crits and Overhealing pages; bars now scale dynamically.
+* Fixed a Lua crash when inspecting the Damage Taken detailed breakdown.
+* Fixed: Changed Report default channel to be window warnings - now works!
+
+## Optimized
+* Completely optimized the Combat Log engine for much better FPS during 40-man raids.
+
 # Changelog - HeroStats v1.0.0b2
 
 ## [Changed]
