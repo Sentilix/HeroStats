@@ -37,7 +37,7 @@ function HeroStats_SendQueuedMessages(msgList, channel, isCustom, customNum)
                 -- Note: customNum contains the target player's name string forwarded from your popup layers
                 SendChatMessage(lineMsg, "WHISPER", nil, customNum)
             else
-                SendChatMessage(lineMsg, channel)
+                SendChatMessage(lineMsg, channel, nil)
             end
             
             index = index + 1

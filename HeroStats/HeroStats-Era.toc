@@ -1,12 +1,12 @@
 ## Title: HeroStats - combat log statistics
 ## Version: 2.0.0a1
 ## Author: mimma @ EU-pyrewood village
-## Interface: 16001
-## X-expansion-level: 60
+## Interface: 11509
+## X-expansion-level: 1
 ## IconTexture: Interface\Icons\Achievement_BG_TopHealer_AV
 ## SavedVariablesPerCharacter: HeroStatsSettings
 
-herostatsapi-forever.lua
+herostatsapi-era.lua
 herostatsdb.lua
 herostatscomm.lua
 herostatsui.lua

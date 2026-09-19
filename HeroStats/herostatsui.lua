@@ -329,7 +329,10 @@ filterButton:SetScript("OnClick", function(self)
         end
         if self:GetNormalTexture() then self:GetNormalTexture():SetAllPoints(self) end
         
-        if coreFrame and coreFrame.RefreshStats then coreFrame.RefreshStats() end
+        local coreFrameRef = HeroStats_GetCoreFrame and HeroStats_GetCoreFrame()
+        if coreFrameRef and coreFrameRef.RefreshStats then 
+            coreFrameRef.RefreshStats() 
+        end
     end
 end)
 

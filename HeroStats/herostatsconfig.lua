@@ -223,8 +223,11 @@ StaticPopupDialogs["HEROSTATS_PURGE_RECORDS_CONFIRM"] = {
             if HeroStats_Print then
                 HeroStats_Print("Your historical personal Damage and Healing records have been completely reset.")
             end
-            if coreFrame and coreFrame.RefreshStats then 
-                coreFrame.RefreshStats() 
+            
+            -- FIXED v2.0.0: Safe Cross-File Interface Refresh via Architectural Getter Shield
+            local coreFrameRef = HeroStats_GetCoreFrame and HeroStats_GetCoreFrame()
+            if coreFrameRef and coreFrameRef.RefreshStats then 
+                coreFrameRef.RefreshStats() 
             end
         end
     end,
